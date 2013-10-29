@@ -144,7 +144,7 @@ Int_t getres(Double_t t, Double_t pxsize, Double_t n, const Char_t* qefn, Double
     if( gSystem->AccessPathName(qefn)==0 ) //file with QE data is found
         qepath = qefn;
     else {
-        qepath = "../qe/";
+        qepath = "data/";
         qepath += qefn;
         qepath += ".dat";
     }
