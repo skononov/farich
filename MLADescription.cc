@@ -394,11 +394,11 @@ MLAResult& MLADescription::Calculate(Spectrum& eff,double ps,double b)
 
                 Swl+=(1-1/rn2[iwl][l])/tanc*att;
 
-            } //по слоям
+            } //loop on layers
 
             S+=K*0.01*eff.Evaluate(wl[iwl])*Swl*wlstep/wl[iwl]/wl[iwl];
 
-        } //по длине волны
+        } //loop on wavelength
 
         result.r[i]=R;
         result.s[i]=S;
@@ -409,7 +409,7 @@ MLAResult& MLADescription::Calculate(Spectrum& eff,double ps,double b)
             R2mean+=R*R*S*Rstep;
         }
 
-    } //по радиусу
+    } //loop on radius
 
     if( !finite(Npe) || Npe<=0 ) {
         cout<<"Npe="<<Npe<<endl;
@@ -423,7 +423,7 @@ MLAResult& MLADescription::Calculate(Spectrum& eff,double ps,double b)
     result.radius=Rmean;
     result.sigma1=sqrt(R2mean-Rmean*Rmean);
     if( ps!=0 ) result.sigma1=sqrt(result.sigma1*result.sigma1+ps*ps/12);
-    //Точное вычисление ошибки на трек
+    //Exact calculation of the error per track
     double factor=(gsl_sf_expint_Ei(Npe)-eulergamma-log(Npe))/(exp(Npe)-1);
     result.sigma_t=result.sigma1*sqrt(factor);
     result.rmin=Rmin;
