@@ -1,0 +1,12 @@
+*.ps
+*.eps
+*.pdf
+*.png
+*.root
+*~
+*.d
+*.o
+*.a
+*.so
+*.zip
+farichres
