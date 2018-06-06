@@ -1,0 +1,57 @@
+/Rich/pmt/qeDataFile ../qe/dsipm_3200_22.dat
+/Rich/pmt/detection 0.69
+/Rich/radiator/scatterLength 50 mm
+/Rich/radiator/absDataFile none
+/Rich/mode manual
+/Rich/proximity 165 mm
+/Rich/radiator/addLayer 1.07 0.64618 mm
+/Rich/radiator/addLayer 1.0696 0.64824 mm
+/Rich/radiator/addLayer 1.0693 0.6503 mm
+/Rich/radiator/addLayer 1.0689 0.65237 mm
+/Rich/radiator/addLayer 1.0685 0.65445 mm
+/Rich/radiator/addLayer 1.0682 0.65654 mm
+/Rich/radiator/addLayer 1.0678 0.65864 mm
+/Rich/radiator/addLayer 1.0674 0.66075 mm
+/Rich/radiator/addLayer 1.0671 0.66286 mm
+/Rich/radiator/addLayer 1.0667 0.66499 mm
+/Rich/radiator/addLayer 1.0664 0.66712 mm
+/Rich/radiator/addLayer 1.066 0.66926 mm
+/Rich/radiator/addLayer 1.0657 0.67141 mm
+/Rich/radiator/addLayer 1.0653 0.67357 mm
+/Rich/radiator/addLayer 1.065 0.67574 mm
+/Rich/radiator/addLayer 1.0646 0.67792 mm
+/Rich/radiator/addLayer 1.0643 0.6801 mm
+/Rich/radiator/addLayer 1.064 0.6823 mm
+/Rich/radiator/addLayer 1.0636 0.6845 mm
+/Rich/radiator/addLayer 1.0633 0.68671 mm
+/Rich/radiator/addLayer 1.0629 0.68893 mm
+/Rich/radiator/addLayer 1.0626 0.69117 mm
+/Rich/radiator/addLayer 1.0623 0.6934 mm
+/Rich/radiator/addLayer 1.0619 0.69565 mm
+/Rich/radiator/addLayer 1.0616 0.69791 mm
+/Rich/radiator/addLayer 1.0613 0.70018 mm
+/Rich/radiator/addLayer 1.061 0.70246 mm
+/Rich/radiator/addLayer 1.0606 0.70474 mm
+/Rich/radiator/addLayer 1.0603 0.70704 mm
+/Rich/radiator/addLayer 1.06 0.70934 mm
+/Rich/radiator/addLayer 1.0597 0.71165 mm
+/Rich/radiator/addLayer 1.0594 0.71398 mm
+/Rich/radiator/addLayer 1.059 0.71631 mm
+/Rich/radiator/addLayer 1.0587 0.71865 mm
+/Rich/radiator/addLayer 1.0584 0.721 mm
+/Rich/radiator/addLayer 1.0581 0.72336 mm
+/Rich/radiator/addLayer 1.0578 0.72573 mm
+/Rich/radiator/addLayer 1.0575 0.72811 mm
+/Rich/radiator/addLayer 1.0572 0.7305 mm
+/Rich/radiator/addLayer 1.0569 0.7329 mm
+/Rich/radiator/addLayer 1.0566 0.73531 mm
+/Rich/radiator/addLayer 1.0563 0.73772 mm
+/Rich/radiator/addLayer 1.056 0.74015 mm
+/Rich/radiator/addLayer 1.0557 0.74259 mm
+/Rich/radiator/addLayer 1.0554 0.74503 mm
+/Rich/radiator/addLayer 1.0551 0.74749 mm
+/Rich/radiator/addLayer 1.0548 0.74996 mm
+/Rich/radiator/addLayer 1.0545 0.75243 mm
+/Rich/radiator/addLayer 1.0542 0.75492 mm
+/Rich/radiator/addLayer 1.054 0.75742 mm
+/Rich/update
