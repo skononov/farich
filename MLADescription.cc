@@ -263,7 +263,7 @@ void MLADescription::Print(const char* pfx) const
 
     for(int i=0; i<nlayers; i++) {
         cout << pfx << " Layer " << setw(2) << i+1 << ": n="
-            << setprecision(4) << vn[i] <<" t=" << vt[i];
+            << setprecision(4) << vn[i] << setprecision(2) <<" t=" << vt[i];
         cout << "\n";
     }
     cout << flush;
