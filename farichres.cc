@@ -6,36 +6,32 @@
 #include <unistd.h>
 #include <libgen.h>
 #include <string>
+#include <set>
 
-#include <TROOT.h>
-#include <TRint.h>
-#include <TFile.h>
-#include <TMath.h>
-#include <TSpline.h>
-#include <TGraph.h>
-#include <TCanvas.h>
-#include <TH1.h>
-#include <TF1.h>
-#include <Minuit2/MnStrategy.h>
-#include <Minuit2/MnMigrad.h>
-#include <Minuit2/MnSimplex.h>
-#include <Minuit2/MnMinimize.h>
-#include <Minuit2/MnUserParameters.h>
-#include <Minuit2/MnUserParameterState.h>
-#include <Minuit2/FunctionMinimum.h>
-#include <Minuit2/MnPrint.h>
+#include "TROOT.h"
+#include "TRint.h"
+#include "TFile.h"
+#include "TMath.h"
+#include "TSpline.h"
+#include "TGraph.h"
+#include "TCanvas.h"
+#include "TH1.h"
+#include "TF1.h"
 
+#include "Math/Minimizer.h"
+#include "Math/Factory.h"
+#include "Math/Functor.h"
+ 
 #include "MLADescription.h"
 #include "Spectrum.h"
-#include "Minuit2FCN.h"
 
 using namespace std;
 
-static const char *optstring="qn:s:N:D:T:p:b:e:o:O:m";
+static const char *optstring="qn:s:N:D:T:p:b:e:o:O:m::";
 static const char *progname;
 
 //Параметры программы
-static const char *qefn;
+static string qefn;
 static bool  batch=false;
 static float ri1=1.07;
 static float Lsc=50.;
@@ -46,13 +42,16 @@ static float efficiency=1.0;
 float pixelsize=0;
 static float opbeta=1.0;
 static bool  minimize=false;
-static const char *outfn="";
-static const char *macfn="";
+static string mintype="Minuit2";
+static string minalgo="Migrad";
+static string outfn = "hrad_t.root";
+static string macfn;
 
-MLADescription mla;
-Spectrum phdeteff;
+static MLADescription mla0, mlamin;
+static Spectrum phdeteff;
+static double penaltyCoef = 1.0;
 
-double get_max_sensitivity_wl()
+static double get_max_sensitivity_wl()
 {
 	double wl1, wl2;
 	phdeteff.GetRange(wl1,wl2);
@@ -74,6 +73,61 @@ double get_max_sensitivity_wl()
 	return wl0;
 }
 
+static const set<string>& define_minimizer_options() 
+{
+    set<string> &defmintypes = *(new set<string>);
+    defmintypes.insert("Minuit");
+    defmintypes.insert("Minuit2");
+    defmintypes.insert("GSLMultiMin");
+    defmintypes.insert("GSLMultiFit");
+    defmintypes.insert("GSLSimAn");
+    defmintypes.insert("Linear");
+    defmintypes.insert("Fumili");
+    defmintypes.insert("Genetic");
+    return defmintypes;
+}
+
+static double resolution(const double* x)
+{
+    int nlayers = mlamin.GetNlayers();
+  	double T = mlamin.GetTotalThickness();
+	double Teval = 0.;
+    for(int l=0; l<nlayers; l++) {
+	    if( l>0 ) mlamin.SetIndex(l,x[2*l-1]);
+	    mlamin.SetThickness(l,x[2*l]);
+	    Teval += x[2*l];
+    }
+
+	MLAResult& res=mlamin.Calculate(phdeteff, pixelsize);
+
+	if( !res.valid ) return NAN;
+	
+	double penalty = Teval<=T?0.:penaltyCoef*(T-Teval);
+
+	return (res.sigma_t+penalty)/mlamin.GetProximityDistance();
+}
+
+static void write_geant4_macfile(string macfn,MLADescription& mla)
+{
+    cout<<"Сохраняем описание RICH в командный файл Geant4 "<<macfn<<endl;
+	ofstream macfile(macfn.c_str());
+	if( macfile.is_open() ) {
+		macfile<<"/Rich/pmt/qeDataFile "<<qefn<<"\n"
+			<<"/Rich/pmt/detection "<<efficiency<<"\n"
+			<<"/Rich/radiator/scatterLength "<<Lsc<<" mm\n"
+			<<"/Rich/radiator/absDataFile none\n"
+			<<"/Rich/mode manual\n"
+			<<"/Rich/proximity "<<mla.GetProximityDistance()<<" mm\n";
+		for(int l=0; l<nlayers; l++) {
+			macfile<<"/Rich/radiator/addLayer "<<setprecision(5)<<mla.GetIndex(l)
+				<<" "<<mla.GetThickness(l)<<" mm\n";
+		}
+		macfile<<"/Rich/update"<<endl;
+	} else {
+		cerr<<macfn<<": не могу открыть файл на запись"<<endl;
+	}
+}
+
 void Usage(int status)
 {
 	cout<<"Usage: "<<progname<<" [OPTIONS] qefile\n"
@@ -81,18 +135,18 @@ void Usage(int status)
 		<<"аэрогелем. Оптимизирует разрешение. Параметр qefile задает путь к файлу с "
 		<<"данными о квантовой эффективности фотонного детектора\n"
 		<<" OPTIONS:\n"
-		<<"   -q            Задачный режим без графики и интерпретатора\n"
-		<<"   -e eff        Фактор к эффективности фотонного детектора 0<eff<=1 ("<<efficiency<<")\n"
-		<<"   -p size       Размер квадратного пикселя фотонного детектора, мм ("<<pixelsize<<")\n"
-		<<"   -D distance   Расстояние от начала радиатора до фотонного детектора, мм ("<<D<<")\n"
-		<<"   -n ri1        Максимальный показатель преломления радиатора на 400 нм ("<<ri1<<")\n"
-		<<"   -N nlayers    Число слоев аэрогеля ("<<nlayers<<")\n"
-		<<"   -T thickness  Толщина радиатора, мм ("<<T<<")\n"
-		<<"   -s Lsc        Длина рассеяния на 400 нм, мм ("<<Lsc<<")\n"
-		<<"   -b beta       Оптимизировать радиатор для данной скорости ("<<opbeta<<")\n"
-		<<"   -o filename   Выходной root файл для сохранения распределения по радиусу ("<<outfn<<")\n"
-		<<"   -O filename   Сохранить описание детектора в командный файл Geant4 ("<<macfn<<")\n"
-		<<"   -m            Минимизация ошибки по радиусу на трек\n"
+		<<"   -q                Задачный режим без графики и интерпретатора\n"
+		<<"   -e eff            Фактор к эффективности фотонного детектора 0<eff<=1 ("<<efficiency<<")\n"
+		<<"   -p size           Размер квадратного пикселя фотонного детектора, мм ("<<pixelsize<<")\n"
+		<<"   -D distance       Расстояние от начала радиатора до фотонного детектора, мм ("<<D<<")\n"
+		<<"   -n ri1            Максимальный показатель преломления радиатора на 400 нм ("<<ri1<<")\n"
+		<<"   -N nlayers        Число слоев аэрогеля ("<<nlayers<<")\n"
+		<<"   -T thickness      Толщина радиатора, мм ("<<T<<")\n"
+		<<"   -s Lsc            Длина рассеяния на 400 нм, мм ("<<Lsc<<")\n"
+		<<"   -b beta           Оптимизировать радиатор для данной скорости ("<<opbeta<<")\n"
+		<<"   -m [type[:algo]]  Оптимизировать радиатор по ошибке на трек с данным типом минимизатора и алгоритмом ("<<mintype<<":"<<minalgo<<")\n"
+		<<"   -o filename       Выходной root файл для сохранения распределения по радиусу ("<<outfn<<")\n"
+		<<"   -O filename       Сохранить описание детектора в командный файл Geant4 ("<<macfn<<")\n"
 		<<endl;
 	exit(status);
 }
@@ -103,6 +157,8 @@ int main(int argc, char* argv[])
 
 	if( argc==1 ) Usage(0);
 
+    const set<string> defmintypes = define_minimizer_options();
+    
 //=========Обработка параметров программы==========//
 	int opt;
 	while( (opt=getopt(argc,argv,optstring)) > 0 ) {
@@ -177,6 +233,21 @@ int main(int argc, char* argv[])
 		}
 		else if( opt=='m' ) {
 			minimize=true;
+			if( optarg ) {
+			    string minarg = optarg;
+			    size_t found = minarg.find_first_of(':');
+			    if( found!=string::npos ) {
+    			    mintype = minarg.substr(0,found-1);
+    			    minalgo = minarg.substr(found+1);
+			    } else {
+    			    mintype = minarg;
+    			    minalgo = "";
+    			}
+			    if( defmintypes.count(mintype)==0 ) {
+			        cerr<<mintype<<": неизвестный тип минимизатора"<<endl;
+			        return 1;
+			    }
+			}
 		}
 		else if( opt=='o' ) {
 			outfn=optarg;
@@ -218,8 +289,11 @@ int main(int argc, char* argv[])
 		<<"  длина рассеяния в аэрогеле на 400 нм:         "<<Lsc<<" мм\n"
 		<<"  оптимизация для скорости:                     "<<opbeta<<"\n"
 		<<"  минимизация "<<(minimize?"включена":"выключена")<<"\n";
-	if( *outfn ) cout<<"  выходной root-файл: "<<outfn<<"\n";
-	if( *macfn ) cout<<"  файл макроса для Geant4: "<<macfn<<"\n";
+		if( minimize )
+    		cout << "     тип:             " << mintype << "\n"
+    		     << "     алгоритм:        " << minalgo << "\n";
+	if( !outfn.empty() ) cout<<"  выходной root-файл: "<<outfn<<"\n";
+	if( !macfn.empty() ) cout<<"  файл макроса для Geant4: "<<macfn<<"\n";
 	cout<<"________________________________________________"<<endl;
 
 	TRint *app=0;
@@ -229,7 +303,7 @@ int main(int argc, char* argv[])
 		app=new TRint("rint",&ac,av);
 	}
 
-	phdeteff.ReadFile(qefn);
+	phdeteff.ReadFile(qefn.c_str());
 	if( phdeteff.IsEmpty() )
 		return 1;
 
@@ -252,8 +326,6 @@ int main(int argc, char* argv[])
 	mla0.SetScatteringLength(Lsc);
 
 	mla0.MakeFixed(nlayers,D,ri1);
-//	for(int l=0; l<nlayers; l++)
-//		mla0.AddAlayer(ri1,T/nlayers);
 
 	cout<<"Исходный аэрогелевый радиатор:"<<endl;
 	mla0.Print("  ");
@@ -265,75 +337,54 @@ int main(int argc, char* argv[])
 	cout<<"  Ошибка радиуса на 1 фотон:    "<<res.sigma1<<endl;
 	cout<<"  Ошибка радиуса на трек:       "<<res.sigma_t<<endl;
 
-	mla=mla0;
 	if( minimize ) {
-		Minuit2FCN fcn(0.1*res.sigma_t);
+		cout << "Оптимизация радиатора (тип: " << mintype << ", алгоритм: " << minalgo << ")" << endl;
+        ROOT::Math::Minimizer* min = 
+              ROOT::Math::Factory::CreateMinimizer(mintype, minalgo);
+        min->SetMaxFunctionCalls(1000000);
+        min->SetMaxIterations(100000);
+        min->SetTolerance(0.001);
+        min->SetPrintLevel(1);
+     
+        ROOT::Math::Functor fcn(&resolution,2*nlayers-1); 
 
-		char name[20];
-		ROOT::Minuit2::MnUserParameters pars;
-		pars.Add(string("t1"),mla.GetThickness(0),0.01,0.0,T);
-		for(int l=1; l<nlayers; l++) {
-			sprintf(name,"n%d",l+1);
-			pars.Add(string(name),mla.GetIndex(l),0.005,1.0,2.0);
-			sprintf(name,"t%d",l+1);
-			pars.Add(string(name),mla.GetThickness(l),0.5,0.0,T);
+		mlamin = mla0;
+     
+        for(int i=0; i<5; i++, penaltyCoef*=2) {
+            min->SetFunction(fcn);
+            // Set the free variables to be minimized
+		    char name[20];
+            min->SetLimitedVariable(0, "t1", mlamin.GetThickness(0), 0.01, 0.0, T);
+		    for(int l=1; l<nlayers; l++) {
+			    sprintf(name,"n%d",l+1);
+                min->SetLimitedVariable(2*l-1, name, mlamin.GetIndex(l), 0.005, 1.0, 1.2);
+			    sprintf(name,"t%d",l+1);
+                min->SetLimitedVariable(2*l, name, mlamin.GetThickness(l), 0.5, 0.0, T);
+		    }
+
+		    cout<<"Попытка "<<i+1<<", penaltyCoef="<<penaltyCoef<<endl;
+            min->Minimize(); 
+
+            //min->PrintResults();
+
+		    if( min->Status()!=0 ) {
+			    cout<<">> Не удалось оптимизировать :("<<endl;
+			    break;
+		    }
+
+            const double *xs = min->X();
+		    for(int l=0; l<nlayers; l++) {
+			    if( l>0 ) mlamin.SetIndex(l,xs[2*l-1]);
+			    mlamin.SetThickness(l,xs[2*l]);
+		    }
+		    if( i<4 ) min->Clear();
 		}
-
-		ROOT::Minuit2::MnStrategy strategy(1);
-
-		ROOT::Minuit2::MnMinimize combmin(fcn, pars, strategy);
-
-//		combmin.SetPrecision(1e-8);
-
-		cout<<"Первая попытка"<<endl;
-
-		ROOT::Minuit2::FunctionMinimum minimum = combmin(1000,0.1);
-
-		cout<<minimum;
-
-		ROOT::Minuit2::MnUserParameterState state=minimum.UserState();
-
-		if( !minimum.IsValid() ) {
-			cout<<"Не удалось оптимизировать 1 :("<<endl;
-			return 0;
-		}
-
-		cout<<"Освобождаем параметры"<<endl;
-		state.SetError((unsigned int)0,0.05);
-		state.RemoveLimits((unsigned int)0);
-		for(int l=1; l<nlayers; l++) {
-			state.SetError((unsigned int)2*l,0.05);
-			state.RemoveLimits((unsigned int)2*l);
-			state.SetError((unsigned int)2*l-1,0.001);
-			state.RemoveLimits((unsigned int)2*l-1);
-		}
-
-		strategy.SetLowStrategy();
-		ROOT::Minuit2::MnMigrad migrad(fcn, state, strategy);
-
-		minimum=migrad(1000,0.1);
-
-		cout<<minimum;
-
-		if( !minimum.IsValid() ) {
-			cout<<"Не удалось оптимизировать 2 :("<<endl;
-		} else {
-			state=minimum.UserState();
-		}
-
-		double Tnorm=0;
-		for(int l=0; l<mla.GetNlayers(); l++)
-			Tnorm+=state.Value(2*l);
-
-		for(int l=0; l<mla.GetNlayers(); l++) {
-			if( l>0 ) mla.SetIndex(l,state.Value(2*l-1));
-			mla.SetThickness(l,state.Value(2*l)*T/Tnorm);
-		}
+		mla0 = mlamin;
 
 		cout<<"Аэрогелевый радиатор оптимизированный"<<endl;
-		mla.Print("  ");
+		mla0.Print("  ");
 
-		res=mla.Calculate(phdeteff,pixelsize);
+		res=mla0.Calculate(phdeteff,pixelsize);
 		cout<<"  Среднее число фотоэлектронов: "<<res.npe<<endl;
 		cout<<"  Средний радиус:               "<<res.radius<<endl;
 		cout<<"  Ошибка радиуса на 1 фотон:    "<<res.sigma1<<endl;
@@ -343,9 +394,9 @@ int main(int argc, char* argv[])
 	TH1D hrad("hrad","Radius photoelectron distribution;radius, mm",Nr,res.rmin,res.rmax);
 	for(int i=0; i<Nr; i++) hrad.SetBinContent(i+1,res.s[i]);
 
-	if( *outfn ) {
+	if( !outfn.empty() ) {
 		cout<<"Сохраняем распределение фотонов по радиусу в "<<outfn<<endl;
-		TFile *outfile=new TFile(outfn,"RECREATE");
+		TFile *outfile=new TFile(outfn.c_str(),"RECREATE");
 		if( outfile->IsOpen() )
 			hrad.Write("hrad");
 		else
@@ -354,28 +405,11 @@ int main(int argc, char* argv[])
 		delete outfile;
 	}
 
-	if( *macfn ) {
-		cout<<"Сохраняем описание RICH в командный файл Geant4 "<<macfn<<endl;
-		ofstream macfile(macfn);
-		if( macfile.is_open() ) {
-			macfile<<"/Rich/pmt/qeDataFile "<<qefn<<"\n"
-				<<"/Rich/pmt/detection "<<efficiency<<"\n"
-				<<"/Rich/radiator/scatterLength "<<Lsc<<" mm\n"
-				<<"/Rich/radiator/absDataFile none\n"
-				<<"/Rich/mode manual\n"
-				<<"/Rich/proximity "<<t0<<" mm\n";
-			for(int l=0; l<nlayers; l++) {
-				macfile<<"/Rich/radiator/addLayer "<<setprecision(5)<<mla.GetIndex(l)
-					<<" "<<mla.GetThickness(l)<<" mm\n";
-			}
-			macfile<<"/Rich/update"<<endl;
-		} else {
-			cerr<<macfn<<": не могу открыть файл на запись"<<endl;
-		}
-	}
+	if( !macfn.empty() )
+		write_geant4_macfile(macfn, mla0);
 
 	if( !batch ) {
-		TCanvas *c=new TCanvas("c1","Распределение фотоэлектронов по радиусу");
+		TCanvas *c=new TCanvas("c1","c1");
 
 		hrad.Draw("l");
 
