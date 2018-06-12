@@ -1,14 +1,11 @@
 #include "Spectrum.h"
 
+#include <cmath>
 #include <iostream>
 #include <fstream>
 #include <iomanip>
 
-using std::pair;
-using std::cerr;
-using std::cout;
-using std::endl;
-using std::ifstream;
+using namespace std;
 
 int Spectrum::ReadFile(const char* datafile)
 {
