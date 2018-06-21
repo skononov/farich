@@ -44,7 +44,7 @@ static float opbeta=1.0;
 static bool  minimize=false;
 static string mintype="Minuit2";
 static string minalgo="Migrad";
-static string outfn = "hrad_t.root";
+static string outfn = "hrad.root";
 static string macfn;
 
 static MLADescription mla0, mlamin;

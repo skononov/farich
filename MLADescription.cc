@@ -16,7 +16,6 @@ MLADescription::MLADescription(double d, double b, double wl) :
     beta(b),
     wavelength(wl),
     scatteringLength(0),
-    totalThickness(0),
     result()
 {}
 
@@ -28,7 +27,6 @@ nlayers(mla.nlayers),
     scatteringLength(mla.scatteringLength),
     vn(mla.vn),
     vt(mla.vt),
-    totalThickness(mla.totalThickness),
     result(mla.result)
 {}
 
@@ -42,7 +40,6 @@ void MLADescription::clear()
     vn.clear();
     vt.clear();
     nlayers=0;
-    totalThickness=0;
     result.valid=false;
 }
 
@@ -51,11 +48,9 @@ void MLADescription::GoToAbs()
     nlayers=rn.size()-1;
     vn.resize(nlayers);
     vt.resize(nlayers);
-    totalThickness=0;
     for(int i=0; i<nlayers; i++) {
         vn[i]=AerogelRefIndex(rn[i+1]/beta,wavelength,400.);
         vt[i]=rt[i+1]*t0;
-        totalThickness+=vt[i];
     }
 }
 
@@ -117,7 +112,6 @@ void MLADescription::AddAlayer(double ri,double t)
     nlayers++;
     vn.push_back(ri);
     vt.push_back(t);
-    totalThickness+=t;
 }
 
 int MLADescription::MakeLayers(int N, double n1, double t1)
@@ -200,7 +194,6 @@ int MLADescription::MakeFixed(int N, double G, double n1)
         double t1=G-t0;
         vn.push_back(n1);
         vt.push_back(t1);
-        totalThickness=t1;
         return 1;
     }
 
@@ -257,26 +250,18 @@ void MLADescription::Print(const char* pfx) const
     cout.precision(2);
     cout << pfx << "Number of layers: " << nlayers << "\n"
         << pfx << "Proximity distance:  " << t0 << "\n"
-        << pfx << "Total thickness:  " << totalThickness << "\n"
+        << pfx << "Total thickness:  " << GetTotalThickness() << "\n"
         << pfx << "Optimal beta:     " << setprecision(6) << beta << "\n"
         << pfx << "Optimal wavelength: " << setprecision(3) << wavelength << "\n";
 
     for(int i=0; i<nlayers; i++) {
         cout << pfx << " Layer " << setw(2) << i+1 << ": n="
-            << setprecision(4) << vn[i] << setprecision(2) <<" t=" << vt[i];
+             << setprecision(4) << vn[i] << setprecision(2) <<" t=" << vt[i];
         cout << "\n";
     }
     cout << flush;
     cout.unsetf(ios::fixed|ios::left);
     cout.width(0);
-}
-
-double MLADescription::CalculateTotalThickness()
-{
-    totalThickness=0;
-    for(int i=0; i<nlayers; i++)
-        totalThickness+=vt[i];
-    return totalThickness;
 }
 
 double MLADescription::GetMinimumThickness() const
@@ -295,7 +280,7 @@ double MLADescription::GetMinimumThickness() const
 
 MLAResult& MLADescription::Calculate(Spectrum& eff,double ps,double b)
 {
-    static const int Nsp=20;
+    static const int Nsp=50;
     static const double eulergamma=0.5772156649;
     //normalizing coefficient of Cerenkov emission intensity assuming wavelength in nm and path in mm
     static const double K=2*M_PI/137.036/1e-6;
@@ -361,17 +346,16 @@ MLAResult& MLADescription::Calculate(Spectrum& eff,double ps,double b)
 
     double Npe=0;
     double Rmean=0, R2mean=0;
-    double R, S, Swl, path, dR, tanc, x, att;
+    double R, S, Swl, path, dR, tanc, x0, x1, att;
 
     for(int i=0; i<Nr; i++) {
         double R=Rmin+i*Rstep;
-        double S=0;
-        double Swl;
+        double S=0, Swl=0;
         for(int iwl=0; iwl<Nsp; iwl++) {
             Swl=0;
             for(int l=0; l<nlayers; l++) {
                 if( rn2[iwl][l]<1.0 ) continue; //underthreshold velocity
-                dR=t0*sqrt((rn2[iwl][l]-1)/(b2-rn2[iwl][l]+1)); //shift of the ring
+                dR=t0*sqrt((rn2[iwl][l]-1)/(b2-rn2[iwl][l]+1)); //shift of the ring in air
                 path=0; //path of light in the forward layers
                 for(int pl=0; pl<l; pl++) {
                     dR+=vt[pl]*sqrt((rn2[iwl][l]-1)/(rn2[iwl][pl]-rn2[iwl][l]+1));
@@ -380,19 +364,23 @@ MLAResult& MLADescription::Calculate(Spectrum& eff,double ps,double b)
 
                 tanc=sqrt(rn2[iwl][l]-1);
 
-                x=(R-dR)/tanc; //position of photon emission in the current layer
+                x0=(R-dR)/tanc; //position of photon emission for the first radius point
+                x1=x0+Rstep/tanc; //position of photon emmission for the second radius point
 
-                if( x<0 || x>vt[l] ) //no contribution into the current point from this layer
+                if( x0<0. && x1<0. || x0>vt[l] && x1>vt[l] ) //no contribution into the current point from this layer
                     continue;
 
-                path+=x*sqrt(rn2[iwl][l]);
+                x0=x0<0.?0.:x0;
+                x1=x1>vt[l]?vt[l]:x1;
+                
+                path+=0.5*(x0+x1)*sqrt(rn2[iwl][l]);
 
                 if( scatteringLength>0 )
                     att=exp(-path/lsc[iwl]);
                 else
                     att=1.0;
 
-                Swl+=(1-1/rn2[iwl][l])/tanc*att;
+                Swl+=(1-1/rn2[iwl][l])*att*fabs(x1-x0);
 
             } //loop on layers
 
@@ -401,12 +389,12 @@ MLAResult& MLADescription::Calculate(Spectrum& eff,double ps,double b)
         } //loop on wavelength
 
         result.r[i]=R;
-        result.s[i]=S;
+        result.s[i]=S/Rstep;
 
         if( S!=0 ) {
-            Npe+=S*Rstep;
-            Rmean+=R*S*Rstep;
-            R2mean+=R*R*S*Rstep;
+            Npe+=S;
+            Rmean+=R*S;
+            R2mean+=R*R*S;
         }
 
     } //loop on radius

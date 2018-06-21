@@ -40,8 +40,6 @@ private:
 	std::vector<double> rn;  ///< reduced indices for calculations
 	std::vector<double> rt;  ///< reduced thicknesses for calculations
 
-	double totalThickness;   ///< total thickness of layers in usual units
-
 	double T10;              ///< auxilary coefficient
 
 	MLAResult result;        ///< last result of calculation
@@ -107,8 +105,6 @@ public:
 	void SetThickness(int i,double t) { if( i<nlayers && t>0.0 ) { vt[i]=t; } }
 	/**Set light scattering length for all the layers*/
 	void SetScatteringLength(double l) { scatteringLength=l; }
-	/**Recalculate total thickness of radiator*/
-	double CalculateTotalThickness();
 
 	/**Get number of layers*/
 	double GetNlayers() const { return nlayers; }
@@ -118,8 +114,6 @@ public:
 	double GetBeta() const { return beta; }
 	/**Get wavelength parameter*/
 	double GetWavelength() const { return wavelength; }
-	/**Get total thickness of radiator*/
-	double GetTotalThickness() const { return totalThickness; }
 	/**Get refractive index of the @c i-th layer, i=0..N-1*/
 	double GetIndex(int i) const { return i<nlayers?vn[i]:NAN; }
 	/**Get thickness of the @c i-th layer, i=0..N-1*/
@@ -128,6 +122,14 @@ public:
 	double GetScatteringLength() const { return scatteringLength; }
 	/**Get minimum layer thickness*/
 	double GetMinimumThickness() const;
+
+
+	/**Get total thickness of radiator*/
+	double GetTotalThickness() const {
+	    double T = 0;
+	    for(int i=0; i<nlayers; i++) T += vt[i];
+	    return T;
+	}
 
 	/**Formula of tangent of the Cherenkov angle produced in the layer @c k
 	 * and refracted in the layer @c l*/
