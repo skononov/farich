@@ -4,6 +4,7 @@
 #include "TF1.h"
 #include "TGraph.h"
 #include "TMath.h"
+#include <Math/DistFunc.h>
 
 //                        e      mu      pi      K       p
 const Double_t Mtab[5]={0.511, 105.66, 139.57, 493.68, 938.27}; //MeV
@@ -105,6 +106,17 @@ Double_t func_npe_vs_ang(Double_t *x,Double_t *par)
 }
 
 
+Double_t separation_poisson(Double_t *x,Double_t *par)
+{
+    UInt_t nthr = int(*x+0.5);
+    Double_t mu1 = par[0], mu2 = par[1];
+    
+    Double_t P1 = ROOT::Math::poisson_cdf(nthr,mu1), P2 = ROOT::Math::poisson_cdf(nthr,mu2);
+    Double_t Q1 = P1==1.?0.:ROOT::Math::normal_quantile(P1,1), Q2 = P2==1.?0.:ROOT::Math::normal_quantile(P2,1);
+    
+    return Q2-Q1;
+}
+
 /** Calculates angular and radius resolution and number of photoelectrons for an aerogel proximity focusing RICH
     Parameters:
         t       - thickness of aerogel, mm
@@ -166,11 +178,7 @@ Int_t getres(Double_t t, Double_t pixel, Double_t n, const Char_t* qefn, Double_
         temp=M[0]; M[0]=M[1]; M[1]=temp;
     }
 
-    TString qepath = "data/";
-    qepath += qefn;
-    qepath += ".dat";
-
-    gqe = new TGraph(qepath);
+    gqe = new TGraph(qefn);
     if( gqe->GetN()==0 ) return 2;
     WLmin = (gqe->GetX())[0];
     WLmax = (gqe->GetX())[gqe->GetN()-1];
@@ -184,6 +192,7 @@ Int_t getres(Double_t t, Double_t pixel, Double_t n, const Char_t* qefn, Double_
     TF1 *Fangair = new TF1("Fangair",func_anginair_vs_wl,WLmin,WLmax,2);
     TF1 *Fnpe_wl = new TF1("Fnpe_wl",func_aer_npe_vs_wl,WLmin,WLmax,2);
     TF1 *Fairnpe_wl = new TF1("Fairnpe_wl",func_air_npe_vs_wl,WLmin,WLmax,1);
+    TF1 *Fsep_npe = new TF1("Fsep_npe",separation_poisson,0,100,2);
     Fnpe_wl->SetTitle("Spectrum of detected unscattered photoelectrons from aerogel;#lambda, nm;dN_{pe}}/d#lambda");
     Fairnpe_wl->SetTitle("Spectrum of detected photoelectrons from air;#lambda, nm;dN_{pe}/d#lambda");
     Find->SetParameter(0,n);
@@ -243,7 +252,6 @@ Int_t getres(Double_t t, Double_t pixel, Double_t n, const Char_t* qefn, Double_
         r.sR[i][1] = pixel/sqrt(12);
         Fnpe_ang->SetParameter(0,i);
         rms_ch[i] = sqrt(Fnpe_ang->Variance(Fnpe_ang->GetXmin(),Fnpe_ang->GetXmax()));
-        printf("%f\n", Fnpe_ang->Eval((Fnpe_ang->GetXmin()+Fnpe_ang->GetXmax())/2));
         Double_t cos2 = cos(r.AngAir[i])*cos(r.AngAir[i]);
         r.sR[i][2] = 1e-3*rms_ch[i]*(d+t/2)/cos2;
         Float_t Npes=r.Npe[i]>1?r.Npe[i]:1;
@@ -255,10 +263,18 @@ Int_t getres(Double_t t, Double_t pixel, Double_t n, const Char_t* qefn, Double_
         }
     }
     r.dAngAir = r.AngAir[0]-r.AngAir[1];
-    if (p2aboveThres)
-        r.Sep = 2*r.dAngAir/(r.sAngAir[0]+r.sAngAir[1]);
-    else
-        r.Sep = TMath::Sqrt(2)*TMath::ErfcInverse(2*exp(-r.Npe[0]));
+    Double_t sep_res = p2aboveThres?2*r.dAngAir/(r.sAngAir[0]+r.sAngAir[1]):0.0;
+
+    Fsep_npe->SetParameters(r.Npe[0], r.Npe[1]);
+    Fsep_npe->SetRange(0, 2*r.Npe[0]);
+    Double_t sep_npe = Fsep_npe->GetMaximum();
+
+    Bool_t isSepByNpe = kFALSE;
+    if (sep_npe > sep_res) {
+        r.Sep = sep_npe;
+        isSepByNpe = kTRUE;
+    } else
+        r.Sep = sep_res;
 
     if (out)
     {
@@ -276,7 +292,7 @@ Int_t getres(Double_t t, Double_t pixel, Double_t n, const Char_t* qefn, Double_
              << "Intensity(" << part1 << ")=" << 1-pow(r.Pth[0]/p,2) << ", Intensity(" << part2 << ")="
              << 1-pow(r.Pth[1]/p,2) << "\n"
              << "----\n"
-             << "QE file name: " << qepath << "\n"
+             << "QE file name: " << qefn << "\n"
              << "Wavelength region: " << WLmin << "-" << WLmax << "\n"
              << setprecision(3) << "Proximity distance " << d << " mm, Photoelectron collection " << g << "\n"
              << "------------------------------------------------------------------------\n" << endl;
@@ -305,7 +321,7 @@ Int_t getres(Double_t t, Double_t pixel, Double_t n, const Char_t* qefn, Double_
         if (p2aboveThres) {
              cout << ", Ang.res.(" << part2 << ")=" << 1e3*r.sAngAir[1] << " mrad";
         }
-        cout << "\nSeparation power" << (p2aboveThres?": ":"(evaluated from Poisson dist. of Npe): ") << setprecision(2) << r.Sep << "\n"
+        cout << "\nSeparation power" << (isSepByNpe?"(by Npe!): ":": ") << setprecision(2) << r.Sep << "\n"
              << "Contributions into the resolution, mm:  Thickness  pixel   Dispersion\n"
              << setw(2) << part1 << "\t\t\t\t\t" << setprecision(3)
              << setw(6) << r.sR[0][0] << "     " << setw(6) << r.sR[0][1] << "    " << setw(6) << r.sR[0][2] << "\n";
