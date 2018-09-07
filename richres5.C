@@ -5,6 +5,7 @@
 #include "TGraph.h"
 #include "TMath.h"
 #include <Math/DistFunc.h>
+#include "Math/SpecFunc.h"
 
 //                        e      mu      pi      K       p
 const Double_t Mtab[5]={0.511, 105.66, 139.57, 493.68, 938.27}; //MeV
@@ -14,6 +15,8 @@ Double_t wl0=400.0; //wavelength, nm
 
 Double_t WLmin=200, WLmax=700;
 
+const Double_t eulergamma=0.5772156649;
+
 struct InputParameters {
     Double_t t, n, p, d, g;
 } inPar;
@@ -21,8 +24,9 @@ struct InputParameters {
 struct Result {
     Double_t Npe[2];
     Double_t Pth[2];
-    Double_t Ang[2],  sAngAir[2], AngAir[2], dAngAir;
-    Double_t sR[2][3], sRmr[3];
+    Double_t Ang[2],  AngAir[2], sAngAirSP[2], sAngAirT[2], dAngAir;
+    Double_t Rad[2], sRadSP[2], sRadT[2];
+    Double_t sRadSPc[2][3], sAngSPc[3];
     Double_t Sep;
 } r;
 
@@ -138,17 +142,21 @@ Int_t getres(Double_t t, Double_t pixel, Double_t n, const Char_t* qefn, Double_
     inPar.d=d;
     inPar.g=g;
 
+    r.dAngAir=0;
     for(int i=0; i<2; i++) {
         r.Npe[i]=0;
         r.Ang[i]=0;
-        r.sAngAir[i]=-1;
         r.AngAir[i]=0;
-        r.sR[i][0]=-1;
-        r.sR[i][1]=-1;
-        r.sR[i][2]=-1;
-        r.sRmr[0]=-1;
-        r.sRmr[1]=-1;
-        r.sRmr[2]=-1;
+        r.sAngAirSP[i]=-1;
+        r.sAngAirT[i]=-1;
+        r.sRadSP[i]=-1;
+        r.sRadT[i]=-1;
+        r.sRadSPc[i][0]=-1;
+        r.sRadSPc[i][1]=-1;
+        r.sRadSPc[i][2]=-1;
+        r.sAngSPc[0]=-1;
+        r.sAngSPc[1]=-1;
+        r.sAngSPc[2]=-1;
     }
 
     Double_t M[2];
@@ -248,22 +256,28 @@ Int_t getres(Double_t t, Double_t pixel, Double_t n, const Char_t* qefn, Double_
         Double_t WLmean=Fnpe_wl->Mean(WLmin,WLmax);
         r.Ang[i] = Fang->Eval(WLmean);
         r.AngAir[i] = Fangair->Eval(WLmean);
-        r.sR[i][0] = t*tan(r.Ang[i])/sqrt(12);
-        r.sR[i][1] = pixel/sqrt(12);
+        r.sRadSPc[i][0] = t*tan(r.Ang[i])/sqrt(12);
+        r.sRadSPc[i][1] = pixel/sqrt(12);
         Fnpe_ang->SetParameter(0,i);
         rms_ch[i] = sqrt(Fnpe_ang->Variance(Fnpe_ang->GetXmin(),Fnpe_ang->GetXmax()));
         Double_t cos2 = cos(r.AngAir[i])*cos(r.AngAir[i]);
-        r.sR[i][2] = 1e-3*rms_ch[i]*(d+t/2)/cos2;
-        Float_t Npes=r.Npe[i]>1?r.Npe[i]:1;
-        r.sAngAir[i] = sqrt((pow(r.sR[i][0],2)+pow(r.sR[i][1],2)+pow(r.sR[i][2],2))/Npes)*cos2/d;
+        r.sRadSPc[i][2] = 1e-3*rms_ch[i]*(d+t/2)/cos2;
+
+        Double_t factor = (ROOT::Math::expint(r.Npe[i])-eulergamma-log(r.Npe[i]))/(exp(r.Npe[i])-1);
+
+        r.sRadSP[i] = sqrt(pow(r.sRadSPc[i][0],2)+pow(r.sRadSPc[i][1],2)+pow(r.sRadSPc[i][2],2));
+        r.sRadT[i] = r.sRadSP[i]*sqrt(factor);
+        r.sAngAirSP[i] = r.sRadSP[i]*cos2/d;
+        r.sAngAirT[i] = r.sAngAirSP[i]*sqrt(factor);
+        
         if( i==0 ) {
-            r.sRmr[0] = 1e3*r.sR[0][0]/(d+t/2)*cos2;
-            r.sRmr[1] = 1e3*r.sR[0][1]/(d+t/2)*cos2;
-            r.sRmr[2] = rms_ch[0];
+            r.sAngSPc[0] = 1e3*r.sRadSPc[0][0]/(d+t/2)*cos2;
+            r.sAngSPc[1] = 1e3*r.sRadSPc[0][1]/(d+t/2)*cos2;
+            r.sAngSPc[2] = rms_ch[0];
         }
     }
     r.dAngAir = r.AngAir[0]-r.AngAir[1];
-    Double_t sep_res = p2aboveThres?2*r.dAngAir/(r.sAngAir[0]+r.sAngAir[1]):0.0;
+    Double_t sep_res = p2aboveThres?2*r.dAngAir/(r.sAngAirT[0]+r.sAngAirT[1]):0.0;
 
     Fsep_npe->SetParameters(r.Npe[0], r.Npe[1]);
     Fsep_npe->SetRange(0, 2*r.Npe[0]);
@@ -317,22 +331,24 @@ Int_t getres(Double_t t, Double_t pixel, Double_t n, const Char_t* qefn, Double_
                 cout << ", Npe.in_air(" << part2 << ")=" << airnpe[1];
         }
         
-        cout << "\n" << setprecision(3) << setw(5) << "Ang.res.(" << part1 << ")=" << 1e3*r.sAngAir[0] << " mrad";
+        cout << "\n" << setprecision(3) << setw(5) << "Ang.res.per_track(" << part1 << ")=" << 1e3*r.sAngAirT[0] << " mrad, Ang.res.per_photon(" << part1 << ")=" << 1e3*r.sAngAirSP[0] << " mrad"
+             << "\nRad.res.per_track(" << part1 << ")=" << r.sRadT[0] << " mm, Rad.res.per_photon(" << part1 << ")=" << r.sRadSP[0] << " mm";
         if (p2aboveThres) {
-             cout << ", Ang.res.(" << part2 << ")=" << 1e3*r.sAngAir[1] << " mrad";
+             cout << "\nAng.res.per_track(" << part2 << ")=" << 1e3*r.sAngAirT[1] << " mrad, Ang.res.per_photon(" << part2 << ")=" << 1e3*r.sAngAirSP[1] << " mrad"
+                  << "\nRad.res.per_track(" << part2 << ")=" << r.sRadT[1] << " mm, Rad.res.per_photon(" << part2 << ")=" << r.sRadSP[1] << " mm";
         }
         cout << "\nSeparation power" << (isSepByNpe?"(by Npe!): ":": ") << setprecision(2) << r.Sep << "\n"
-             << "Contributions into the resolution, mm:  Thickness  pixel   Dispersion\n"
+             << "Contributions into the resolution, mm:  Thickness   Pixel   Dispersion\n"
              << setw(2) << part1 << "\t\t\t\t\t" << setprecision(3)
-             << setw(6) << r.sR[0][0] << "     " << setw(6) << r.sR[0][1] << "    " << setw(6) << r.sR[0][2] << "\n";
+             << setw(6) << r.sRadSPc[0][0] << "     " << setw(6) << r.sRadSPc[0][1] << "    " << setw(6) << r.sRadSPc[0][2] << "\n";
         if (p2aboveThres) {
             cout << setw(2) << part2 << "\t\t\t\t\t" << setprecision(3)
-                 << setw(6) << r.sR[1][0] << "     " << setw(6) << r.sR[1][1] << "    " << setw(6) << r.sR[1][2] << "\n";
+                 << setw(6) << r.sRadSPc[1][0] << "     " << setw(6) << r.sRadSPc[1][1] << "    " << setw(6) << r.sRadSPc[1][2] << "\n";
         } else {
             cout << setw(2) << part2 << "\t\t\t\t\t\tUnder threshold"  << "\n";
         }
         cout << "Contributions to resolution, mrad:\t" << setprecision(3)
-             << setw(6) << r.sRmr[0] << "     " << setw(6) << r.sRmr[1] << "    " << setw(6) << r.sRmr[2] << "\n"
+             << setw(6) << r.sAngSPc[0] << "     " << setw(6) << r.sAngSPc[1] << "    " << setw(6) << r.sAngSPc[2] << "\n"
              << "************************************************************************\n" << endl;
         cout.precision(0);
         cout.width(0);

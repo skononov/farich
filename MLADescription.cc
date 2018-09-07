@@ -247,8 +247,7 @@ void MLADescription::Print(const char* pfx) const
     }
 
     cout.setf(ios::fixed|ios::left);
-    cout.precision(2);
-    cout << pfx << "Number of layers: " << nlayers << "\n"
+    cout << pfx << "Number of layers: " << setprecision(3) << nlayers << "\n"
         << pfx << "Proximity distance:  " << t0 << "\n"
         << pfx << "Total thickness:  " << GetTotalThickness() << "\n"
         << pfx << "Optimal beta:     " << setprecision(6) << beta << "\n"
@@ -261,6 +260,7 @@ void MLADescription::Print(const char* pfx) const
     }
     cout << flush;
     cout.unsetf(ios::fixed|ios::left);
+    cout.precision(6);
     cout.width(0);
 }
 
