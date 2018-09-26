@@ -6,9 +6,33 @@
 
 #include "Spectrum.h"
 
-using namespace std;
+#include "Math/Minimizer.h"
+#include "Math/Factory.h"
+#include "Math/Functor.h"
+
+using std::cout;
+using std::cerr;
+using std::endl;
+using std::flush;
+using std::setprecision;
+using std::setw;
 
 double MLADescription::tolerance = 1e-6;
+
+ROOT::Math::Minimizer* MLADescription::minimizer = nullptr;
+
+void MLADescription::InitializeMinimizer()
+{
+    if( !minimizer ) {
+        minimizer = ROOT::Math::Factory::CreateMinimizer("Minuit2", "Migrad");
+        minimizer->SetMaxFunctionCalls(1000000);
+        minimizer->SetMaxIterations(100000);
+        minimizer->SetTolerance(0.001);
+        minimizer->SetPrintLevel(1);
+    } else {
+        minimizer->Clear();
+    }
+}
 
 MLADescription::MLADescription(double d, double b, double wl) :
     nlayers(0),
@@ -16,30 +40,42 @@ MLADescription::MLADescription(double d, double b, double wl) :
     beta(b),
     wavelength(wl),
     scatteringLength(0),
-    result()
-{}
+    pixelSize(0.),
+    optimization(0),
+    result(),
+    nPolCoef(0)
+{
+}
 
 MLADescription::MLADescription(const MLADescription& mla) :
-nlayers(mla.nlayers),
+    nlayers(mla.nlayers),
     t0(mla.t0),
     beta(mla.beta),
     wavelength(mla.wavelength),
     scatteringLength(mla.scatteringLength),
+    pixelSize(mla.pixelSize),
+    optimization(mla.optimization),
     vn(mla.vn),
     vt(mla.vt),
-    result(mla.result)
-{}
+    result(mla.result),
+    nPolCoef(mla.nPolCoef),
+    polCoef(mla.polCoef)
+{
+}
 
 MLADescription::~MLADescription()
 {}
 
-void MLADescription::clear()
+void MLADescription::Clear()
 {
     rn.clear();
     rt.clear();
     vn.clear();
     vt.clear();
+    polCoef.clear();
+    nPolCoef=0;
     nlayers=0;
+    optimization=0;
     result.valid=false;
 }
 
@@ -109,19 +145,31 @@ double MLADescription::AerogelRefIndex(double n, double wl1, double wl2)
 
 void MLADescription::AddAlayer(double ri,double t)
 {
+    optimization=0;
     nlayers++;
     vn.push_back(ri);
     vt.push_back(t);
 }
 
-int MLADescription::MakeLayers(int N, double n1, double t1)
+bool MLADescription::MakeLayers(int N, double n1, double t1)
 { //fixed number of layers. Input parameters: beta, t0, n1 (at 400nm), t1, N.
-    clear();
+    if( N<1 || N>100 ) {
+        cerr<<"MLADescription::MakeLayers(): Error: invalid number of layers "<<N<<". Should be between 1 and 100."<<endl;
+        return false;
+    }
+    if( n1<1. ) {
+        cerr<<"MLADescription::MakeLayers(): Error: refractive index "<<n1<<" is less than 1.0"<<endl;
+        return false;
+    }
+    if( t1<0. ) {
+        cerr<<"MLADescription::MakeLayers(): Error: i thickness value "<<t1<<endl;
+        return false;
+    }
+
+    Clear();
 
     rn.reserve(N+1);
     rt.reserve(N+1);
-
-    if( N<=0 ) return 0;
 
     if( wavelength!=400. ) n1=AerogelRefIndex(n1,400.,wavelength);
 
@@ -142,17 +190,29 @@ int MLADescription::MakeLayers(int N, double n1, double t1)
 
     GoToAbs();
 
-    return i;
+    return true;
 }
 
-int MLADescription::MakeGabarit(double G, double n1, double rt1)
+bool MLADescription::MakeGabarit(double G, double n1, double rt1)
 { //fixed total thickness of radiator. Input parameters: beta, t0, G, n1 (at 400nm), rt1.
-
+    if( n1<1. ) {
+        cerr<<"MLADescription::MakeGabarit(): Error: refractive index "<<n1<<" is less than 1.0"<<endl;
+        return false;
+    }
+    if( rt1<0. ) {
+        cerr<<"MLADescription::MakeGabarit(): Error: invalid relative thickness value "<<rt1<<endl;
+        return false;
+    }
+    if( G<t0 ) {
+        cerr<<"MLADescription::MakeGabarit(): Error: dimension "<<G<<" is less than proximity distance "<<t0<<endl;
+        return false;
+    }
+    
     double t1 = rt1*t0; //thickness of the first layer
 
     double Tmax=G-t0; //maximum thickness of radiator (may be unachievable)
 
-    clear();
+    Clear();
 
     if( wavelength!=400. ) n1=AerogelRefIndex(n1,400.,wavelength);
 
@@ -179,13 +239,26 @@ int MLADescription::MakeGabarit(double G, double n1, double rt1)
 
     GoToAbs();
 
-    return i; //number of layers to fit given Tmax
+    return true;
 }
 
-int MLADescription::MakeFixed(int N, double G, double n1)
+bool MLADescription::MakeFixed(int N, double G, double n1)
 { //fixed number of layers and total thickness of radiator.
     //Input parameters: beta, t0, N, G, n1 (at 400nm)
-    clear();
+    if( N<1 || N>100 ) {
+        cerr<<"MLADescription::MakeFixed(): Error: invalid number of layers "<<N<<". Should be between 1 and 100."<<endl;
+        return false;
+    }
+    if( n1<1. ) {
+        cerr<<"MLADescription::MakeFixed(): Error: refractive index "<<n1<<" is less than 1.0"<<endl;
+        return false;
+    }
+    if( G<t0 ) {
+        cerr<<"MLADescription::MakeFixed(): Error: dimension "<<G<<" is less than proximity distance "<<t0<<endl;
+        return false;
+    }
+
+    Clear();
 
     if( N<=0 ) return 0;
 
@@ -194,7 +267,7 @@ int MLADescription::MakeFixed(int N, double G, double n1)
         double t1=G-t0;
         vn.push_back(n1);
         vt.push_back(t1);
-        return 1;
+        return true;
     }
 
     if( wavelength!=400. ) n1=AerogelRefIndex(n1,400.,wavelength);
@@ -231,12 +304,12 @@ int MLADescription::MakeFixed(int N, double G, double n1)
         t1+=(Tgoal-T)*t1/T;
 
         nit++;
-        if (nit>500) return 0; //iterations diverging
+        if (nit>500) return false; //iterations diverging
     }
 
     GoToAbs();
 
-    return nlayers;
+    return true;
 }
 
 void MLADescription::Print(const char* pfx) const
@@ -246,55 +319,51 @@ void MLADescription::Print(const char* pfx) const
         return;
     }
 
-    cout.setf(ios::fixed|ios::left);
-    cout << pfx << "Number of layers: " << setprecision(3) << nlayers << "\n"
+    cout.setf(std::ios::fixed|std::ios::left);
+    cout << pfx << "Number of layers: " << std::setprecision(3) << nlayers << "\n"
         << pfx << "Proximity distance:  " << t0 << "\n"
         << pfx << "Total thickness:  " << GetTotalThickness() << "\n"
         << pfx << "Optimal beta:     " << setprecision(6) << beta << "\n"
         << pfx << "Optimal wavelength: " << setprecision(3) << wavelength << "\n";
 
-    for(int i=0; i<nlayers; i++) {
-        cout << pfx << " Layer " << setw(2) << i+1 << ": n="
-             << setprecision(4) << vn[i] << setprecision(2) <<" t=" << vt[i];
-        cout << "\n";
+    if( optimization==POL_OPTIMIZATION ) {
+        cout.unsetf(std::ios::fixed);
+        cout.setf(std::ios::scientific);        
+        cout << pfx << "Polynomial description: n(x1) + (x-x1)*P_"<<nPolCoef-1<<"(x)\n" 
+             << pfx << "Coefficients of the P_"<<nPolCoef-1<<":\n";
+        for(int i=0; i<nPolCoef; i++)
+            cout << pfx << "  C" << i << "=" << setprecision(4) << polCoef[i] << "\n";
+        cout.setf(std::ios::fixed);
+        cout.unsetf(std::ios::scientific);        
     }
+    cout << pfx << "Layer thicknesses and refractive indices (20 layers at most):\n";
+    for(int i=0; i<std::min(20,nlayers); i++) {
+        cout << pfx << " Layer " << setw(2) << i+1 << ": n="
+             << setprecision(4) << vn[i] << setprecision(2) <<" t=" << vt[i] << "\n";
+    }
+    if( nlayers>20 )
+        cout << pfx << " ......\n";
     cout << flush;
-    cout.unsetf(ios::fixed|ios::left);
+    cout.unsetf(std::ios::fixed|std::ios::left);
     cout.precision(6);
     cout.width(0);
 }
 
-double MLADescription::GetMinimumThickness() const
-{
-    if( nlayers==0 ) return 0.;
-
-    double t=vt[0];
-
-    for(size_t i=0; i<nlayers; i++)
-        if( t>vt[i] ) t=vt[i];
-
-    return t;
-}
-
 #include <gsl/gsl_sf_expint.h> //for exponential integral
 
-MLAResult& MLADescription::Calculate(Spectrum& eff,double ps,double b)
+MLADescription::Resolution& MLADescription::Calculate()
 {
-    static const int Nsp=50;
     static const double eulergamma=0.5772156649;
     //normalizing coefficient of Cerenkov emission intensity assuming wavelength in nm and path in mm
     static const double K=2*M_PI/137.036/1e-6;
     static double rn2[Nsp][100];
-    assert(nlayers<100);
 
     result.valid=false;
 
     double wl1, wl2;
-    eff.GetRange(wl1,wl2);
+    pdEff.GetRange(wl1,wl2);
 
-    if( b==0.0 ) b=beta;
-
-    double b2=b*b;
+    double b=beta, b2=b*b;
 
     //Find minimum and maximum radii of the ring
     double rnmin=b*AerogelRefIndex(vn[0],400.,wl2), rnmax=b*AerogelRefIndex(vn[0],400.,wl1);
@@ -326,7 +395,7 @@ MLAResult& MLADescription::Calculate(Spectrum& eff,double ps,double b)
     if( Rmax==0 ) return result;
 
     if( !finite(Rmin) || !finite(Rmax) )
-        cout<<"Rmin="<<Rmin<<" Rmax="<<Rmax<<endl;
+        cout<<"MLADescription::Calculate(): Rmin="<<Rmin<<" Rmax="<<Rmax<<endl;
 
     double Rstep=(Rmax-Rmin)/(Nr-1);
 
@@ -348,12 +417,12 @@ MLAResult& MLADescription::Calculate(Spectrum& eff,double ps,double b)
     double Rmean=0, R2mean=0;
     double R, S, Swl, path, dR, tanc, x0, x1, att;
 
-    for(int i=0; i<Nr; i++) {
+    for(int i=0; i<Nr; i++) { //loop on radius
         double R=Rmin+i*Rstep;
         double S=0, Swl=0;
-        for(int iwl=0; iwl<Nsp; iwl++) {
+        for(int iwl=0; iwl<Nsp; iwl++) { //loop on wavelength
             Swl=0;
-            for(int l=0; l<nlayers; l++) {
+            for(int l=0; l<nlayers; l++) { //loop on layers
                 if( rn2[iwl][l]<1.0 ) continue; //underthreshold velocity
                 dR=t0*sqrt((rn2[iwl][l]-1)/(b2-rn2[iwl][l]+1)); //shift of the ring in air
                 path=0; //path of light in the forward layers
@@ -384,7 +453,7 @@ MLAResult& MLADescription::Calculate(Spectrum& eff,double ps,double b)
 
             } //loop on layers
 
-            S+=K*0.01*eff.Evaluate(wl[iwl])*Swl*wlstep/wl[iwl]/wl[iwl];
+            S+=K*0.01*pdEff.Evaluate(wl[iwl])*Swl*wlstep/wl[iwl]/wl[iwl];
 
         } //loop on wavelength
 
@@ -400,7 +469,7 @@ MLAResult& MLADescription::Calculate(Spectrum& eff,double ps,double b)
     } //loop on radius
 
     if( !finite(Npe) || Npe<=0 ) {
-        cout<<"Npe="<<Npe<<endl;
+        cout<<"MLADescription::Calculate(): Npe="<<Npe<<endl;
         return result;
     }
 
@@ -410,7 +479,7 @@ MLAResult& MLADescription::Calculate(Spectrum& eff,double ps,double b)
     result.npe=Npe;
     result.radius=Rmean;
     result.sigma1=sqrt(R2mean-Rmean*Rmean);
-    if( ps!=0 ) result.sigma1=sqrt(result.sigma1*result.sigma1+ps*ps/12);
+    if( pixelSize!=0. ) result.sigma1=sqrt(result.sigma1*result.sigma1+pixelSize*pixelSize/12);
     //Exact calculation of the error per track
     double factor=(gsl_sf_expint_Ei(Npe)-eulergamma-log(Npe))/(exp(Npe)-1);
     result.sigma_t=result.sigma1*sqrt(factor);
@@ -421,3 +490,185 @@ MLAResult& MLADescription::Calculate(Spectrum& eff,double ps,double b)
     return result;
 }
 
+double MLADescription::GetAngleResolutionPerTrack() const
+{
+    double D = t0 + 0.5*GetTotalThickness();
+    double R = result.radius;
+    
+    return result.sigma_t*D/(D*D+R*R);
+}
+
+#include "TDecompSVD.h"
+#include "gsl/gsl_poly.h"
+
+void MLADescription::ApplyNTParameterization(const double* p)
+{
+    TVectorD pt(nlayers);
+    for(int l=0; l<nlayers; l++)
+        pt[l] = p[2*l+1];
+    
+    TVectorD t = V*pt;
+
+    for(int l=0; l<nlayers; l++) {
+        vn[l] = p[2*l];
+        vt[l] = t[l];
+    }
+}
+
+double MLADescription::EvalResolutionNT(const double* p)
+{
+    ApplyNTParameterization(p);
+    
+    Calculate();
+
+    if( !result.valid ) return NAN;
+
+    return GetAngleResolutionPerTrack();
+}
+
+void MLADescription::ApplyPolParameterization(const double* p)
+{
+    double x0 = vt[0]*0.5, x = x0;
+    if( nPolCoef==1 ) {
+        polCoef[0] = p[0];
+        for(int l=1; l<nlayers; l++) {
+            x += vt[l];
+            vn[l] = std::max(1.,vn[0] + (x-x0)*p[0]);
+        }
+    } else {
+        for(int l=1; l<nlayers; l++) {
+            x += vt[l];
+            vn[l] = std::max(1.,vn[0] + (x-x0)*gsl_poly_eval(p,nPolCoef,x)); //polynomial with fixed value of refractive index in the middle of the first layer
+        }
+    }
+}
+
+double MLADescription::EvalResolutionPol(const double* p)
+{
+    ApplyPolParameterization(p);
+
+    Calculate();
+
+    if( !result.valid ) return NAN;
+
+    return GetAngleResolutionPerTrack();
+}
+
+bool MLADescription::OptimizeNT(int N, double G, double n1)
+{
+    // Make focusing radiator via analytical calculations as the first approximaiton
+    MakeFixed(N, G, n1);
+
+    cout << "Optimize radiator with NT parameterization" << endl;
+
+    // Prepare calculations evaluating V and Vtr transormation matrices
+    TVectorD t(nlayers), pt(nlayers);
+    for(int i=0; i<nlayers; i++)
+        t[i] = vt[i];
+    
+    TMatrixD A(nlayers, nlayers);
+    TVectorD ones(nlayers);
+    ones = 1;
+    TMatrixDRow(A,0) = ones;
+    
+    TDecompSVD D(A);
+    D.Decompose();
+    
+    V.ResizeTo(A);
+    Vtr.ResizeTo(A);
+    
+    V = D.GetV();
+
+    Vtr = V; Vtr.T();
+
+    pt = Vtr*t;
+    
+    InitializeMinimizer();
+    
+    ROOT::Math::Functor fcn(this,&MLADescription::EvalResolutionNT,2*nlayers); 
+
+    minimizer->SetFunction(fcn);
+    // Set the free variables to be minimized
+    char name[20];
+    for(int l=0; l<nlayers; l++) {
+        sprintf(name,"n%d",l+1);
+        minimizer->SetVariable(2*l, name, vn[l], 0.005);
+        sprintf(name,"pt%d",l+1);
+        minimizer->SetVariable(2*l+1, name, pt[l], 0.05);
+    }
+    minimizer->FixVariable(0); 
+    minimizer->FixVariable(1);
+
+    minimizer->Minimize();
+
+    if( minimizer->Status() > 1 ) {
+        cout<<">> Failed to optimize. Status = " <<minimizer->Status()<<endl;
+        return false;
+    }
+
+    ApplyNTParameterization(minimizer->X());
+
+    optimization = NT_OPTIMIZATION;
+    
+    return true;
+}
+
+bool MLADescription::OptimizePol(int N, int npol, double G, double nmax)
+{
+    if( N<1 || N>100 ) {
+        cerr<<"MLADescription::OptimizePol(): Error: invalid number of layers "<<N<<". Should be between 1 and 100."<<endl;
+        return false;
+    }
+    if( npol<1 ) {
+        cerr<<"MLADescription::OptimizePol(): Error: polynomial degree "<<npol<<" is too little. Should be at least 1."<<endl;
+        return false;
+    }
+    if( G<t0 ) {
+        cerr<<"MLADescription::OptimizePol(): Error: dimension "<<G<<" is less than proximity distance "<<t0<<endl;
+        return false;
+    }
+    if( nmax<1. ) {
+        cerr<<"MLADescription::OptimizePol(): Error: refractive index "<<nmax<<" is less than 1.0"<<endl;
+        return false;
+    }
+
+    Clear();
+    
+    cout << "Optimize radiator with polynomial parameterization" << endl;
+
+    nlayers = N;
+    nPolCoef = npol;
+    polCoef.resize(npol);
+    double T = G-t0; //total radiator thickness
+    vn.resize(nlayers, nmax);
+    vt.resize(nlayers, T/nlayers);
+    
+    InitializeMinimizer();
+
+    ROOT::Math::Functor fcn(this,&MLADescription::EvalResolutionPol,nPolCoef); 
+
+    minimizer->SetFunction(fcn);
+    // Set the free variables to be minimized
+    char name[20];
+    for(int i=0; i<nPolCoef; i++) {
+        sprintf(name,"c%d",i);
+        minimizer->SetVariable(i, name, 0., 1e-4/pow(T,i));
+    }
+
+    minimizer->Minimize();
+
+    if( minimizer->Status() > 1 ) {
+        cout<<">> Failed to optimize. Status = " <<minimizer->Status()<<endl;
+        return false;
+    }
+
+    const double *p = minimizer->X();
+    ApplyPolParameterization(p);
+
+    //Copy final polynomial coefficients to this object
+    std::copy(p,p+nPolCoef,polCoef.begin());
+    
+    optimization = POL_OPTIMIZATION;
+
+    return true;
+}

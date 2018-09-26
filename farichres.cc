@@ -12,51 +12,35 @@
 #include "TRint.h"
 #include "TFile.h"
 #include "TMath.h"
-#include "TSpline.h"
-#include "TGraph.h"
 #include "TCanvas.h"
 #include "TH1.h"
-#include "TF1.h"
-#include "TMatrixD.h"
-#include "TDecompSVD.h"
 
-#include "Math/Minimizer.h"
-#include "Math/Factory.h"
-#include "Math/Functor.h"
- 
 #include "MLADescription.h"
-#include "Spectrum.h"
 
 using namespace std;
 
-static const char *optstring="qn:s:N:D:T:p:b:e:o:O:m::";
+static const char *optstring="qn:s:N:D:T:p:b:e:o:O:mM:";
 static const char *progname;
 
 //Параметры программы
 static string qefn;
-static bool  batch=false;
-static float ri1=1.07;
-static float Lsc=50.;
-static int   nlayers=3;
-static float D=100.;
-static float T=25.;
-static float efficiency=1.0;
-float pixelsize=0;
-static float opbeta=1.0;
-static bool  minimize=false;
-static string mintype="Minuit2";
-static string minalgo="Migrad";
-static string outfn = "hrad.root";
+static bool   batch=false;
+static float  ri1=1.07;
+static float  Lsc=50.;
+static int    nlayers=3;
+static float  D=100.;
+static float  T=25.;
+static float  efficiency=1.0;
+static float  pixelsize=0;
+static float  opbeta=1.0;
+static bool   minimize=false;
+static bool   polpar=false;
+static int    npol=2;
+static string outfn = "farichres.root";
 static string macfn;
 
-static MLADescription mlamin;
-static TMatrixD V, Vtr;
-static Spectrum phdeteff;
-
-static double get_max_sensitivity_wl()
+static double get_max_sensitivity_wl(Spectrum& eff,double wl1,double wl2)
 {
-    double wl1, wl2;
-    phdeteff.GetRange(wl1,wl2);
     double wlstep=(wl2-wl1)/50;
     double wl0=400, smax=0;
 
@@ -65,7 +49,7 @@ static double get_max_sensitivity_wl()
         double rn=MLADescription::AerogelRefIndex(ri1,400.,wl)*opbeta;
         if( rn<=1.0 ) continue;
         double Latt=Lsc*pow(wl/400,4);
-        double s=(1-1/(rn*rn))*Latt*phdeteff.Evaluate(wl)*(1-exp(-T*rn/Latt))/rn;
+        double s=(1-1/(rn*rn))*Latt*eff.Evaluate(wl)*(1-exp(-T*rn/Latt))/rn;
         if( smax<s ) {
             smax=s;
             wl0=wl;
@@ -73,115 +57,6 @@ static double get_max_sensitivity_wl()
     }
 
     return wl0;
-}
-
-static const set<string>& define_minimizer_options() 
-{
-    set<string> &defmintypes = *(new set<string>);
-    defmintypes.insert("Minuit");
-    defmintypes.insert("Minuit2");
-    defmintypes.insert("GSLMultiMin");
-    defmintypes.insert("GSLMultiFit");
-    defmintypes.insert("GSLSimAn");
-    defmintypes.insert("Linear");
-    defmintypes.insert("Fumili");
-    defmintypes.insert("Genetic");
-    return defmintypes;
-}
-
-static void transform_to_radiator(const double* x) 
-{
-    static int ncall = 0;
-    
-    ncall++;
-    
-    TVectorD pt(nlayers);
-    for(int l=0; l<nlayers; l++) {
-        mlamin.SetIndex(l,x[2*l]);
-        pt[l] = x[2*l+1];
-    }
-    
-    TVectorD t = V*pt;
-    for(int l=0; l<nlayers; l++)
-        mlamin.SetThickness(l,t[l]);
-        
-//    string sind = "<Call " + to_string(ncall) + ">";
-//    mlamin.Print(sind.c_str());
-}
-
-static double resolution(const double* x)
-{
-    transform_to_radiator(x);
-
-    MLAResult& res=mlamin.Calculate(phdeteff, pixelsize);
-
-    if( !res.valid ) return NAN;
-    
-    return res.sigma_t/mlamin.GetProximityDistance();
-}
-
-static bool optimize_radiator(const MLADescription& inmla)
-{
-    TVectorD t(nlayers), pt(nlayers);
-    for(int i=0; i<nlayers; i++)
-        t[i] = inmla.GetThickness(i);
-    
-    TMatrixD A(nlayers, nlayers);
-    TVectorD ones(nlayers);
-    ones = 1;
-    TMatrixDRow(A,0) = ones;
-    
-    TDecompSVD D(A);
-    D.Decompose();
-    
-    V.ResizeTo(A);
-    Vtr.ResizeTo(A);
-    
-    V = D.GetV();
-    Vtr = V; Vtr.T();
-    
-    pt = Vtr*t;
-    
-    //Check
-    //pt.Print();
-    //(A*V*pt).Print(); 
-    
-    cout << "Оптимизация радиатора (тип: " << mintype << ", алгоритм: " << minalgo << ")" << endl;
-    ROOT::Math::Minimizer* min = 
-          ROOT::Math::Factory::CreateMinimizer(mintype, minalgo);
-    min->SetMaxFunctionCalls(1000000);
-    min->SetMaxIterations(100000);
-    min->SetTolerance(0.001);
-    min->SetPrintLevel(1);
-    
-    mlamin = inmla;
- 
-    ROOT::Math::Functor fcn(&resolution,2*nlayers); 
-
-    min->SetFunction(fcn);
-    // Set the free variables to be minimized
-    char name[20];
-    for(int l=0; l<nlayers; l++) {
-        sprintf(name,"n%d",l+1);
-        min->SetVariable(2*l, name, mlamin.GetIndex(l), 0.005);
-        sprintf(name,"pt%d",l+1);
-        min->SetVariable(2*l+1, name, pt[l], 0.05);
-    }
-    min->FixVariable(0); 
-    min->FixVariable(1);
-
-    min->Minimize();
-
-    //min->PrintResults();
-
-    if( min->Status()>1 ) {
-        cout<<">> Не удалось оптимизировать. Status = " <<min->Status()<<endl;
-        return false;
-    }
-
-    transform_to_radiator(min->X());
-    
-    return true;
 }
 
 static void write_geant4_macfile(string macfn,MLADescription& mla)
@@ -213,17 +88,18 @@ void Usage(int status)
         <<"данными о квантовой эффективности фотонного детектора\n"
         <<" OPTIONS:\n"
         <<"   -q                Задачный режим без графики и интерпретатора\n"
-        <<"   -e eff            Фактор к эффективности фотонного детектора 0<eff<=1 ("<<efficiency<<")\n"
-        <<"   -p size           Размер квадратного пикселя фотонного детектора, мм ("<<pixelsize<<")\n"
-        <<"   -D distance       Расстояние от начала радиатора до фотонного детектора, мм ("<<D<<")\n"
-        <<"   -n ri1            Максимальный показатель преломления радиатора на 400 нм ("<<ri1<<")\n"
-        <<"   -N nlayers        Число слоев аэрогеля ("<<nlayers<<")\n"
-        <<"   -T thickness      Толщина радиатора, мм ("<<T<<")\n"
-        <<"   -s Lsc            Длина рассеяния на 400 нм, мм ("<<Lsc<<")\n"
-        <<"   -b beta           Оптимизировать радиатор для данной скорости ("<<opbeta<<")\n"
-        <<"   -m [type[:algo]]  Оптимизировать радиатор по ошибке на трек с данным типом минимизатора и алгоритмом ("<<mintype<<":"<<minalgo<<")\n"
-        <<"   -o filename       Выходной root файл для сохранения распределения по радиусу ("<<outfn<<")\n"
-        <<"   -O filename       Сохранить описание детектора в командный файл Geant4 ("<<macfn<<")\n"
+        <<"   -e eff            Фактор к эффективности фотонного детектора 0<eff<=1 (default: "<<efficiency<<")\n"
+        <<"   -p size           Размер квадратного пикселя фотонного детектора, мм (default: "<<pixelsize<<")\n"
+        <<"   -D distance       Расстояние от начала радиатора до фотонного детектора, мм (default: "<<D<<")\n"
+        <<"   -n ri1            Максимальный показатель преломления радиатора на 400 нм (default: "<<ri1<<")\n"
+        <<"   -N nlayers        Число слоев аэрогеля (default: "<<nlayers<<")\n"
+        <<"   -T thickness      Толщина радиатора, мм (default: "<<T<<")\n"
+        <<"   -s Lsc            Длина рассеяния на 400 нм, мм (default: "<<Lsc<<")\n"
+        <<"   -b beta           Оптимизировать радиатор для данной скорости (default: "<<opbeta<<")\n"
+        <<"   -m                Оптимизировать радиатор по угловой ошибке на трек\n"
+        <<"   -M npol           При оптимизации представить профиль показателя прелдомления полиномом степени npol (>=1)\n"
+        <<"   -o filename       Сохранить гистограмму распределения по радиусу в заданный ROOT-файл (default: "<<outfn<<")\n"
+        <<"   -O filename       Сохранить описание детектора в заданный командный файл Geant4. По умолчанию - не сохранять.\n"
         <<endl;
     exit(status);
 }
@@ -234,8 +110,6 @@ int main(int argc, char* argv[])
 
     if( argc==1 ) Usage(0);
 
-    const set<string> defmintypes = define_minimizer_options();
-    
 //=========Обработка параметров программы==========//
     int opt;
     while( (opt=getopt(argc,argv,optstring)) > 0 ) {
@@ -310,20 +184,13 @@ int main(int argc, char* argv[])
         }
         else if( opt=='m' ) {
             minimize=true;
-            if( optarg ) {
-                string minarg = optarg;
-                size_t found = minarg.find_first_of(':');
-                if( found!=string::npos ) {
-                    mintype = minarg.substr(0,found-1);
-                    minalgo = minarg.substr(found+1);
-                } else {
-                    mintype = minarg;
-                    minalgo = "";
-                }
-                if( defmintypes.count(mintype)==0 ) {
-                    cerr<<mintype<<": неизвестный тип минимизатора"<<endl;
-                    return 1;
-                }
+        }
+        else if( opt=='M' ) {
+            polpar=true;
+            npol=atoi(optarg);
+            if( npol<1 ) {
+                cerr<<optarg<<": степень многочлена должэна быть больше 0"<<endl;
+                return 1;
             }
         }
         else if( opt=='o' ) {
@@ -366,9 +233,12 @@ int main(int argc, char* argv[])
         <<"  длина рассеяния в аэрогеле на 400 нм:         "<<Lsc<<" мм\n"
         <<"  оптимизация для скорости:                     "<<opbeta<<"\n"
         <<"  минимизация "<<(minimize?"включена":"выключена")<<"\n";
-        if( minimize )
-            cout << "     тип:             " << mintype << "\n"
-                 << "     алгоритм:        " << minalgo << "\n";
+        if( minimize ) {
+            if( polpar )
+                cout << " параметризация профиля показателя многочленом\n";
+            else
+                cout << " параметризация показателей и толщин слоев\n";
+        }
     if( !outfn.empty() ) cout<<"  выходной root-файл: "<<outfn<<"\n";
     if( !macfn.empty() ) cout<<"  файл макроса для Geant4: "<<macfn<<"\n";
     cout<<"________________________________________________"<<endl;
@@ -380,7 +250,7 @@ int main(int argc, char* argv[])
         app=new TRint("rint",&ac,av);
     }
 
-    phdeteff.ReadFile(qefn.c_str());
+    Spectrum phdeteff(qefn.c_str());
     if( phdeteff.IsEmpty() )
         return 1;
 
@@ -388,7 +258,7 @@ int main(int argc, char* argv[])
 
     double wl1, wl2;
     phdeteff.GetRange(wl1,wl2);
-    double wl0=get_max_sensitivity_wl();
+    double wl0=get_max_sensitivity_wl(phdeteff,wl1,wl2);
 
     cout.precision(3);
     cout<<"Квантовая эффективность определена от "<<wl1<<" до "<<wl2<<" нм, всего "
@@ -399,51 +269,67 @@ int main(int argc, char* argv[])
     //Создаем многослойный аэрогелевый радиатор по идеальной модели без дисперсии для
     //длины волны максимальной чувствительности
     double t0=D-T; //proximity distance
-    MLADescription mla0(t0,opbeta,wl0);
-    mla0.SetScatteringLength(Lsc);
+    MLADescription mla(t0,opbeta,wl0);
+    mla.SetScatteringLength(Lsc);
+    mla.SetPDefficiency(phdeteff);
+    mla.SetPixelSize(pixelsize);
 
-    mla0.MakeFixed(nlayers,D,ri1);
+    mla.MakeFixed(nlayers,D,ri1);
 
     cout<<"Исходный аэрогелевый радиатор:"<<endl;
-    mla0.Print("  ");
+    mla.Print("  ");
 
-    MLAResult& res=mla0.Calculate(phdeteff,pixelsize);
+    struct MLADescription::Resolution res=mla.Calculate();
     cout.precision(3);
     cout<<"  Среднее число фотоэлектронов: "<<res.npe<<"\n"
-        <<"  Средний радиус:               "<<res.radius<<"\n"
-        <<"  Ошибка радиуса на 1 фотон:    "<<res.sigma1<<"\n"
-        <<"  Ошибка радиуса на трек:       "<<res.sigma_t<<endl;
+        <<"  Средний радиус:               "<<res.radius<<" мм\n"
+        <<"  Ошибка радиуса на 1 фотон:    "<<res.sigma1<<" мм\n"
+        <<"  Ошибка радиуса на трек:       "<<res.sigma_t<<" мм\n"
+        <<"  Ошибка угла на трек:          "<<1e3*mla.GetAngleResolutionPerTrack()<<" мрад"<<endl;
     cout.precision(6);
 
-    if( minimize && optimize_radiator(mla0) ) {
-        cout<<"Аэрогелевый радиатор оптимизированный"<<endl;
-        mlamin.Print("  ");
+    if( minimize ) {
+        if( polpar )
+            mla.OptimizePol(nlayers,npol,D,ri1);
+        else
+            mla.OptimizeNT(nlayers,D,ri1);
+        
+        cout<<"Оптимизированный аэрогелевый радиатор"<<endl;
+        mla.Print("  ");
 
-        res=mlamin.Calculate(phdeteff,pixelsize);
+        res=mla.Calculate();
         cout.precision(3);
         cout<<"  Среднее число фотоэлектронов: "<<res.npe<<"\n"
-            <<"  Средний радиус:               "<<res.radius<<"\n"
-            <<"  Ошибка радиуса на 1 фотон:    "<<res.sigma1<<"\n"
-            <<"  Ошибка радиуса на трек:       "<<res.sigma_t<<endl;
+            <<"  Средний радиус:               "<<res.radius<<" мм\n"
+            <<"  Ошибка радиуса на 1 фотон:    "<<res.sigma1<<" мм\n"
+            <<"  Ошибка радиуса на трек:       "<<res.sigma_t<<" мм\n"
+            <<"  Ошибка угла на трек:          "<<1e3*mla.GetAngleResolutionPerTrack()<<" мрад"<<endl;
         cout.precision(6);
     }
 
-    TH1D hrad("hrad","Radius photoelectron distribution;radius, mm",Nr,res.rmin,res.rmax);
-    for(int i=0; i<Nr; i++) hrad.SetBinContent(i+1,res.s[i]);
+    TH1D hrad("hrad","Radius photoelectron distribution;radius, mm",MLADescription::Nr,res.rmin,res.rmax);
+    for(int i=0; i<MLADescription::Nr; i++) hrad.SetBinContent(i+1,res.s[i]);
+
+    double *xbins = new double[nlayers+1];
+    xbins[0] = 0.;
+    for(int i=0; i<nlayers; i++) xbins[i+1] = xbins[i] + mla.GetThickness(i);
+    TH1D hri("hri","Refractive index profile;radius, mm;refractive index",nlayers,xbins);
+    for(int bin=1; bin<=nlayers; bin++) hri.SetBinContent(bin,mla.GetIndex(bin-1));
 
     if( !outfn.empty() ) {
         cout<<"Сохраняем распределение фотонов по радиусу в "<<outfn<<endl;
         TFile *outfile=new TFile(outfn.c_str(),"RECREATE");
-        if( outfile->IsOpen() )
-            hrad.Write("hrad");
-        else
+        if( outfile->IsOpen() ) {
+            hrad.Write();
+            hri.Write();
+        } else
             cerr<<outfn<<": не могу открыть файл на запись"<<endl;
         outfile->Close();
         delete outfile;
     }
 
     if( !macfn.empty() )
-        write_geant4_macfile(macfn, mla0);
+        write_geant4_macfile(macfn, mla);
 
     if( !batch ) {
         TCanvas *c=new TCanvas("c1","c1");
