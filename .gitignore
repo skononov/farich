@@ -9,4 +9,7 @@
 *.a
 *.so
 *.zip
+*.anjuta
+*.db
 farichres
+
