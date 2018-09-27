@@ -18,7 +18,7 @@ namespace ROOT { namespace Math { class Minimizer; } }
 class MLADescription {
 public:
     static const int Nr=100; ///< Number of division on radius for the photon distribution calculation
-    static const int Nsp=50; ///< Number of wavelength points for photon distribution calculation
+    static const int Nsp=100; ///< Number of wavelength points for photon distribution calculation
 
     enum Optimization_t {
         NOT_OPTIMIZED = 0,
