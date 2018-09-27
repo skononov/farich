@@ -5,7 +5,11 @@
 #include <fstream>
 #include <iomanip>
 
-using namespace std;
+using std::pair;
+using std::ifstream;
+using std::cerr;
+using std::cout;
+using std::endl;
 
 int Spectrum::ReadFile(const char* datafile)
 {
@@ -51,7 +55,7 @@ void Spectrum::ReduceToRange(double x1,double x2,double defval)
 	}
 
 	if (x1<xfirst) { //x1 below data range
-		if( isnan(defval) )
+		if( std::isnan(defval) )
 			data[x1]=yfirst;
         else
 			data[x1]=defval;
@@ -61,7 +65,7 @@ void Spectrum::ReduceToRange(double x1,double x2,double defval)
 	}
 
 	if (x2>xlast) { //x2 above data range
-		if( isnan(defval) )
+		if( std::isnan(defval) )
 			data[x2]=ylast;
         else
 			data[x2]=defval;
