@@ -3,7 +3,6 @@ EXEC := farichres
 
 all: $(EXEC)
 
-CPPFLAGS += -I. -I$(shell root-config --incdir)
 CXXFLAGS += -I. $(shell root-config --cflags) $(shell gsl-config --cflags) -fPIC
 LD_FLAGS += -Wl,-rpath=$(shell root-config --libdir) -Wl,-rpath-link=$(shell root-config --libdir)
 LIBS := $(shell root-config --libs) $(shell gsl-config --libs)
@@ -18,7 +17,7 @@ DEPS := $(SOURCES:.cc=.cc.d)
 
 %.cc.d: %.cc
 	@echo "Gererating dependencies for $<"    
-	@$(CC) -MM $(CPPFLAGS) $< -MF $@
+	@$(CC) -MM $(CXXFLAGS) $< -MF $@
 
 farichres: $(OBJECTS)
 	$(LD) $(LD_FLAGS) $(OBJECTS) $(LIBS) -o $@
