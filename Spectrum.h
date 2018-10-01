@@ -13,6 +13,7 @@ public:
 	typedef std::map<double,double> data_type;
 	typedef std::pair<double,double> point_type;
 	typedef std::map<double,double>::iterator data_iterator;
+	typedef std::map<double,double>::const_iterator const_data_iterator;
 
 private:
 	data_type data;
@@ -40,10 +41,10 @@ public:
 
 	void Scale(double c);
 
-	double Evaluate(double x);
+	double Evaluate(double x) const;
 
-	void GetRange(double& x1,double& x2) {
-		data_iterator first=data.begin(), last=data.end();
+	void GetRange(double& x1,double& x2) const {
+		const_data_iterator first=data.begin(), last=data.end();
 		x1=first->first;
 		x2=(--last)->first;
 	}

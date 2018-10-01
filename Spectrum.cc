@@ -84,16 +84,16 @@ void Spectrum::Scale(double c)
 		first->second*=c;
 }
 
-double Spectrum::Evaluate(double x)
+double Spectrum::Evaluate(double x) const
 {
 	if (data.empty()) return NAN;
 
-	data_iterator first=data.begin(), last=data.end();
+	const_data_iterator first=data.begin(), last=data.end();
 	last--;
 
 	double val1=first->second, val2=last->second;
 
-	data_iterator lower = data.lower_bound(x), upper=lower;
+	const_data_iterator lower = data.lower_bound(x), upper=lower;
 
 	if (lower==data.begin()) return val1; //falls below lower edge or on the first point
 
