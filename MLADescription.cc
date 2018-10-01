@@ -349,6 +349,34 @@ void MLADescription::Print(const char* pfx) const
     cout.width(0);
 }
 
+double MLADescription::GetMaxSensitivityWL(double T) const
+{
+    double wl1, wl2;
+    double wlmax=400, smax=0;
+
+    pdEff.GetRange(wl1,wl2);
+    double wlstep=(wl2-wl1)/(Nsp-1);    
+
+    for(int i=0; i<Nsp; i++) {
+        double wl=wl1+i*wlstep;
+        double rn=AerogelRefIndex(vn[0],400.,wl)*beta;
+        if( rn<=1.0 ) continue;
+        double attFactor = 1.;
+        if( T>0. ) {
+            double Latt=scatteringLength*pow(wl/400.,4);
+            attFactor=Latt*(1-exp(-T*rn/Latt));
+        }
+        double s=(1-1/(rn*rn))*attFactor*pdEff.Evaluate(wl)/rn;
+        if( smax<s ) {
+            smax=s;
+            wlmax=wl;
+        }
+    }
+
+    return wlmax;
+}
+
+
 #include <gsl/gsl_sf_expint.h> //for exponential integral
 
 MLADescription::Resolution& MLADescription::Calculate()

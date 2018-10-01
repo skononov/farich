@@ -74,7 +74,7 @@ public:
      * @param d proximity distance
      * @param b beta parameter
      */
-    MLADescription(double d=1.0, double b=1.0, double wl=400);
+    MLADescription(double d=1.0, double b=1.0, double wl=400.);
     /**Copy constructor*/
     MLADescription(const MLADescription &mla);
     /**Destructor*/
@@ -178,6 +178,11 @@ public:
     
     /**Get total thickness of radiator*/
     double GetTotalThickness() const { return std::accumulate(vt.begin(),vt.end(),0.); }
+    
+    /**Evaluate maximum sensitivity wavelength taking into account PDE, scattering length and refractive index dispersion
+     * @param T final thickness of the radiator. If T==0 do not take attenuation due to scattering into account.
+     */
+    double GetMaxSensitivityWL(double T=0) const;
 
     /**Formula of refractive index expressed through the refracted Cherenkov angle tangent*/
     double rindex(double tg)

@@ -39,26 +39,6 @@ static int    npol=2;
 static string outfn = "farichres.root";
 static string macfn;
 
-static double get_max_sensitivity_wl(Spectrum& eff,double wl1,double wl2)
-{
-    double wlstep=(wl2-wl1)/50;
-    double wl0=400, smax=0;
-
-    for(int i=0; i<=50; i++) {
-        double wl=wl1+i*wlstep;
-        double rn=MLADescription::AerogelRefIndex(ri1,400.,wl)*opbeta;
-        if( rn<=1.0 ) continue;
-        double Latt=Lsc*pow(wl/400,4);
-        double s=(1-1/(rn*rn))*Latt*eff.Evaluate(wl)*(1-exp(-T*rn/Latt))/rn;
-        if( smax<s ) {
-            smax=s;
-            wl0=wl;
-        }
-    }
-
-    return wl0;
-}
-
 static void write_geant4_macfile(string macfn,MLADescription& mla)
 {
     cout<<"Сохраняем описание RICH в командный файл Geant4 "<<macfn<<endl;
@@ -258,23 +238,24 @@ int main(int argc, char* argv[])
 
     double wl1, wl2;
     phdeteff.GetRange(wl1,wl2);
-    double wl0=get_max_sensitivity_wl(phdeteff,wl1,wl2);
-
+    
     cout.precision(3);
     cout<<"Квантовая эффективность определена от "<<wl1<<" до "<<wl2<<" нм, всего "
         <<phdeteff.Size()<<" значений."<<endl;
-    cout<<"Длина волны максимальной чувствительности к ЧИ: "<<wl0<<" нм"<<endl;
-    cout.precision(0);
 
     //Создаем многослойный аэрогелевый радиатор по идеальной модели без дисперсии для
     //длины волны максимальной чувствительности
     double t0=D-T; //proximity distance
-    MLADescription mla(t0,opbeta,wl0);
+    MLADescription mla(t0,opbeta);
     mla.SetScatteringLength(Lsc);
     mla.SetPDefficiency(phdeteff);
     mla.SetPixelSize(pixelsize);
 
     mla.MakeFixed(nlayers,D,ri1);
+    
+    double wl0 = mla.GetMaxSensitivityWL(T);
+    cout<<"Длина волны максимальной чувствительности к ЧИ: "<<wl0<<" нм"<<endl;
+    mla.SetWavelength(wl0);
 
     cout<<"Исходный аэрогелевый радиатор:"<<endl;
     mla.Print("  ");
