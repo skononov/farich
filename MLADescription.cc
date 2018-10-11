@@ -34,6 +34,13 @@ void MLADescription::InitializeMinimizer()
     }
 }
 
+void MLADescription::Resolution::reserve(int nl)
+{
+    r.resize(Nr);
+    s.resize(Nr);
+    data.resize(Nr*Nwl*nl);
+}
+
 MLADescription::MLADescription(double d, double b, double wl) :
     nlayers(0),
     t0(d),
@@ -153,8 +160,8 @@ void MLADescription::AddAlayer(double ri,double t)
 
 bool MLADescription::MakeLayers(int N, double n1, double t1)
 { //fixed number of layers. Input parameters: beta, t0, n1 (at 400nm), t1, N.
-    if( N<1 || N>100 ) {
-        cerr<<"MLADescription::MakeLayers(): Error: invalid number of layers "<<N<<". Should be between 1 and 100."<<endl;
+    if( N<1 || N>Nlmax ) {
+        cerr<<"MLADescription::MakeLayers(): Error: invalid number of layers "<<N<<". Should be between 1 and "<<Nlmax<<"."<<endl;
         return false;
     }
     if( n1<1. ) {
@@ -245,8 +252,8 @@ bool MLADescription::MakeGabarit(double G, double n1, double rt1)
 bool MLADescription::MakeFixed(int N, double G, double n1)
 { //fixed number of layers and total thickness of radiator.
     //Input parameters: beta, t0, N, G, n1 (at 400nm)
-    if( N<1 || N>100 ) {
-        cerr<<"MLADescription::MakeFixed(): Error: invalid number of layers "<<N<<". Should be between 1 and 100."<<endl;
+    if( N<1 || N>Nlmax ) {
+        cerr<<"MLADescription::MakeFixed(): Error: invalid number of layers "<<N<<". Should be between 1 and "<<Nlmax<<"."<<endl;
         return false;
     }
     if( n1<1. ) {
@@ -379,12 +386,12 @@ double MLADescription::GetMaxSensitivityWL(double T) const
 
 #include <gsl/gsl_sf_expint.h> //for exponential integral
 
-MLADescription::Resolution& MLADescription::Calculate()
+MLADescription::Resolution& MLADescription::Calculate(bool storeData)
 {
     static const double eulergamma=0.5772156649;
     //normalizing coefficient of Cerenkov emission intensity assuming wavelength in nm and path in mm
     static const double K=2*M_PI/137.036/1e-6;
-    static double rn2[Nsp][100];
+    static double rn2[Nwl][Nlmax];
 
     result.valid=false;
 
@@ -422,17 +429,22 @@ MLADescription::Resolution& MLADescription::Calculate()
 
     if( Rmax==0 ) return result;
 
-    if( !finite(Rmin) || !finite(Rmax) )
+    if( !finite(Rmin) || !finite(Rmax) ) {
         cout<<"MLADescription::Calculate(): Rmin="<<Rmin<<" Rmax="<<Rmax<<endl;
+        return result;
+    }
+
+    if( storeData )
+        result.reserve(nlayers);
 
     double Rstep=(Rmax-Rmin)/(Nr-1);
 
     //Preparing calculation to save CPU time
     double rn;
-    double wlstep=(wl2-wl1)/(Nsp-1);
-    double wl[Nsp];
-    double lsc[Nsp];
-    for(int iwl=0; iwl<Nsp; iwl++) {
+    double wlstep=(wl2-wl1)/(Nwl-1);
+    double wl[Nwl];
+    double lsc[Nwl];
+    for(int iwl=0; iwl<Nwl; iwl++) {
         wl[iwl]=wl1+iwl*wlstep;
         lsc[iwl]=scatteringLength*pow(wl[iwl]/400.,4);
         for(int l=0; l<nlayers; l++) {
@@ -448,7 +460,7 @@ MLADescription::Resolution& MLADescription::Calculate()
     for(int i=0; i<Nr; i++) { //loop on radius
         double R=Rmin+i*Rstep;
         double S=0, Swl=0;
-        for(int iwl=0; iwl<Nsp; iwl++) { //loop on wavelength
+        for(int iwl=0; iwl<Nwl; iwl++) { //loop on wavelength
             Swl=0;
             for(int l=0; l<nlayers; l++) { //loop on layers
                 if( rn2[iwl][l]<1.0 ) continue; //underthreshold velocity
@@ -462,7 +474,7 @@ MLADescription::Resolution& MLADescription::Calculate()
                 tanc=sqrt(rn2[iwl][l]-1);
 
                 x0=(R-dR)/tanc; //position of photon emission for the first radius point
-                x1=x0+Rstep/tanc; //position of photon emmission for the second radius point
+                x1=x0+Rstep/tanc; //position of photon emission for the second radius point
 
                 if( x0<0. && x1<0. || x0>vt[l] && x1>vt[l] ) //no contribution into the current point from this layer
                     continue;
@@ -477,7 +489,11 @@ MLADescription::Resolution& MLADescription::Calculate()
                 else
                     att=1.0;
 
-                Swl+=(1-1/rn2[iwl][l])*att*fabs(x1-x0);
+                double dSwl = (1-1/rn2[iwl][l])*att*fabs(x1-x0);
+                if( storeData )
+                    result.data.push_back({l, R, wl[iwl], x0, K*0.01*pdEff.Evaluate(wl[iwl])*dSwl/wl[iwl]/wl[iwl]/Rstep});
+                
+                Swl+=dSwl;
 
             } //loop on layers
 
@@ -485,8 +501,10 @@ MLADescription::Resolution& MLADescription::Calculate()
 
         } //loop on wavelength
 
-        result.r[i]=R;
-        result.s[i]=S/Rstep;
+        if( storeData ) {
+            result.r[i]=R-Rstep;
+            result.s[i]=S/Rstep;
+        }
 
         if( S!=0 ) {
             Npe+=S;
@@ -643,8 +661,8 @@ bool MLADescription::OptimizeNT(int N, double G, double n1)
 
 bool MLADescription::OptimizePol(int N, int npol, double G, double nmax)
 {
-    if( N<1 || N>100 ) {
-        cerr<<"MLADescription::OptimizePol(): Error: invalid number of layers "<<N<<". Should be between 1 and 100."<<endl;
+    if( N<1 || N>Nlmax ) {
+        cerr<<"MLADescription::OptimizePol(): Error: invalid number of layers "<<N<<". Should be between 1 and "<<Nlmax<<"."<<endl;
         return false;
     }
     if( npol<1 ) {

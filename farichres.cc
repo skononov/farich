@@ -63,9 +63,9 @@ static void write_geant4_macfile(string macfn,MLADescription& mla)
 void Usage(int status)
 {
     cout<<"Usage: "<<progname<<" [OPTIONS] qefile\n"
-        <<"Вычисляет разрешение детектора черенковских колец с многослойным фокусирующим "
-        <<"аэрогелем. Оптимизирует разрешение. Параметр qefile задает путь к файлу с "
-        <<"данными о квантовой эффективности фотонного детектора\n"
+        <<"Вычисляет разрешение детектора черенковских колец с многослойным фокусирующим аэрогелем.\n" 
+        <<"Оптимизирует разрешение. Параметр qefile задает путь к файлу с данными о квантовой\n"
+        <<"эффективности фотонного детектора, представленых в двух колонках: длина волны (нм), эффективность (\%).\n\n"
         <<" OPTIONS:\n"
         <<"   -q                Задачный режим без графики и интерпретатора\n"
         <<"   -e eff            Фактор к эффективности фотонного детектора 0<eff<=1 (default: "<<efficiency<<")\n"
@@ -77,7 +77,7 @@ void Usage(int status)
         <<"   -s Lsc            Длина рассеяния на 400 нм, мм (default: "<<Lsc<<")\n"
         <<"   -b beta           Оптимизировать радиатор для данной скорости (default: "<<opbeta<<")\n"
         <<"   -m                Оптимизировать радиатор по угловой ошибке на трек\n"
-        <<"   -M npol           При оптимизации представить профиль показателя прелдомления полиномом степени npol (>=1)\n"
+        <<"   -M npol           При оптимизации представить профиль показателя преломления полиномом степени npol (>=1)\n"
         <<"   -o filename       Сохранить гистограмму распределения по радиусу в заданный ROOT-файл (default: "<<outfn<<")\n"
         <<"   -O filename       Сохранить описание детектора в заданный командный файл Geant4. По умолчанию - не сохранять.\n"
         <<endl;
@@ -260,8 +260,8 @@ int main(int argc, char* argv[])
     cout<<"Исходный аэрогелевый радиатор:"<<endl;
     mla.Print("  ");
 
-    struct MLADescription::Resolution res=mla.Calculate();
-    cout.precision(3);
+    struct MLADescription::Resolution res=mla.Calculate(true);
+    cout.precision(4);
     cout<<"  Среднее число фотоэлектронов: "<<res.npe<<"\n"
         <<"  Средний радиус:               "<<res.radius<<" мм\n"
         <<"  Ошибка радиуса на 1 фотон:    "<<res.sigma1<<" мм\n"
@@ -278,8 +278,8 @@ int main(int argc, char* argv[])
         cout<<"Оптимизированный аэрогелевый радиатор"<<endl;
         mla.Print("  ");
 
-        res=mla.Calculate();
-        cout.precision(3);
+        res=mla.Calculate(true);
+        cout.precision(4);
         cout<<"  Среднее число фотоэлектронов: "<<res.npe<<"\n"
             <<"  Средний радиус:               "<<res.radius<<" мм\n"
             <<"  Ошибка радиуса на 1 фотон:    "<<res.sigma1<<" мм\n"
@@ -288,8 +288,8 @@ int main(int argc, char* argv[])
         cout.precision(6);
     }
 
-    TH1D hrad("hrad","Radius photoelectron distribution;radius, mm",MLADescription::Nr,res.rmin,res.rmax);
-    for(int i=0; i<MLADescription::Nr; i++) hrad.SetBinContent(i+1,res.s[i]);
+    TH1D hrad("hrad","Radius photoelectron distribution;radius, mm;dNpe/dR, mm^{-1}",MLADescription::Nr,res.rmin,res.rmax);
+    for(size_t i=0; i<res.s.size(); i++) hrad.SetBinContent(i+1,res.s[i]);
 
     double *xbins = new double[nlayers+1];
     xbins[0] = 0.;

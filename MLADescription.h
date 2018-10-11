@@ -18,24 +18,30 @@ namespace ROOT { namespace Math { class Minimizer; } }
 class MLADescription {
 public:
     static const int Nr=100; ///< Number of division on radius for the photon distribution calculation
-    static const int Nsp=100; ///< Number of wavelength points for photon distribution calculation
-
+    static const int Nwl=100; ///< Number of wavelength points for photon distribution calculation
+    static const int Nlmax=100; ///< Maximum number of layers
+        
     enum Optimization_t {
         NOT_OPTIMIZED = 0,
         NT_OPTIMIZATION = 1,
         POL_OPTIMIZATION = 2  
     };
+    struct CalcTuple {
+        int layer;
+        double tR, tWL, tX0, tS; ///< calculation tuple
+    };
     struct Resolution {
+        void reserve(int nl);
         bool valid;
         double npe;
         double radius;
         double sigma1;
         double sigma_t;
         double rmin, rmax;
-        double r[Nr];
-        double s[Nr];
+        std::vector<double> r, s; ///< photoelectron distribution on radius with Nr points
+        std::vector<CalcTuple> data; ///< all calculation data
     };
-
+        
 private:
     static double tolerance; ///< allowed coordinate shift calculation error
 
@@ -112,7 +118,7 @@ public:
     bool MakeFixed(int N, double G, double n1);
 
     /**Calculate radius resolution, number of photoelectrons, etc.*/
-    Resolution& Calculate();
+    Resolution& Calculate(bool storeData=false);
 
     /**Optimize focusing radiator for given number of layers, fixed total radiator thickness and refractive index of the first layer
      * @param N number of layers in radiator
