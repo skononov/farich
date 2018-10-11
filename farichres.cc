@@ -279,8 +279,8 @@ int main(int argc, char* argv[])
     cout<<"Исходный аэрогелевый радиатор:"<<endl;
     mla.Print("  ");
 
-    struct MLADescription::Resolution res=mla.Calculate();
-    cout.precision(3);
+    struct MLADescription::Resolution res=mla.Calculate(true);
+    cout.precision(4);
     cout<<"  Среднее число фотоэлектронов: "<<res.npe<<"\n"
         <<"  Средний радиус:               "<<res.radius<<" мм\n"
         <<"  Ошибка радиуса на 1 фотон:    "<<res.sigma1<<" мм\n"
@@ -297,8 +297,8 @@ int main(int argc, char* argv[])
         cout<<"Оптимизированный аэрогелевый радиатор"<<endl;
         mla.Print("  ");
 
-        res=mla.Calculate();
-        cout.precision(3);
+        res=mla.Calculate(true);
+        cout.precision(4);
         cout<<"  Среднее число фотоэлектронов: "<<res.npe<<"\n"
             <<"  Средний радиус:               "<<res.radius<<" мм\n"
             <<"  Ошибка радиуса на 1 фотон:    "<<res.sigma1<<" мм\n"
@@ -307,8 +307,8 @@ int main(int argc, char* argv[])
         cout.precision(6);
     }
 
-    TH1D hrad("hrad","Radius photoelectron distribution;radius, mm",MLADescription::Nr,res.rmin,res.rmax);
-    for(int i=0; i<MLADescription::Nr; i++) hrad.SetBinContent(i+1,res.s[i]);
+    TH1D hrad("hrad","Radius photoelectron distribution;radius, mm;dNpe/dR, mm^{-1}",MLADescription::Nr,res.rmin,res.rmax);
+    for(size_t i=0; i<res.s.size(); i++) hrad.SetBinContent(i+1,res.s[i]);
 
     double *xbins = new double[nlayers+1];
     xbins[0] = 0.;
