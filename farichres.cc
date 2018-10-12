@@ -292,7 +292,7 @@ int main(int argc, char* argv[])
         <<"  Ошибка угла на трек (с учетом пикселя):       "<<res.sigma_t_ang<<" мрад ("<<res.sigma_t_ang_px<<" мрад)"<<endl;
     cout.precision(6);
 
-    if( minimize ) {
+    if( minimize && nlayers>1 ) {
         bool opres;
         if( polpar )
             opres = mla.OptimizePol(nlayers,npol,D,ri1);
@@ -315,12 +315,14 @@ int main(int argc, char* argv[])
                 <<"  Ошибка угла на 1 фотон (с учетом пикселя):    "<<setprecision(4)<<res1.sigma1_ang<<" мрад ("<<res.sigma1_ang_px<<" мрад) ["
                 <<setprecision(2)<<PERC(sigma1_ang)<<"% ("<<PERC(sigma1_ang_px)<<"%)]\n"
                 <<"  Ошибка угла на трек (с учетом пикселя):       "<<setprecision(4)<<res1.sigma_t_ang<<" мрад ("<<res.sigma_t_ang_px<<" мрад) ["
-                <<setprecision(2)<<PERC(sigma_t_ang)<<"% ("<<PERC(sigma_t_ang_px)<<"%)]\n"<<endl;
+                <<setprecision(2)<<PERC(sigma_t_ang)<<"% ("<<PERC(sigma_t_ang_px)<<"%)]"<<endl;
             cout.precision(6);
 
             res = res1; //copy optimized radiator results
         } else
-            cout<<"Не удалось оптимизировать радиатор!\n"<<endl;
+            cout<<"Не удалось оптимизировать радиатор!"<<endl;
+    } else if( minimize && nlayers==1 ) {
+            cerr<<"Оптимизация однослойного радиатора невозможна!"<<endl;
     }
 
     TFile *outfile=nullptr;
