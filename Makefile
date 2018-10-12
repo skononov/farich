@@ -3,9 +3,9 @@ EXEC := farichres
 
 all: $(EXEC)
 
-CXXFLAGS += -I. $(shell root-config --cflags) $(shell gsl-config --cflags) -fPIC -O3 #-g
+CXXFLAGS += -I. $(shell root-config --cflags) $(shell gsl-config --cflags) -fPIC -O3 -fopenmp #-g
 LD_FLAGS += -Wl,-rpath=$(shell root-config --libdir) -Wl,-rpath-link=$(shell root-config --libdir)
-LIBS := $(shell root-config --libs) $(shell gsl-config --libs)
+LIBS := $(shell root-config --libs) $(shell gsl-config --libs) -lgomp
 LD := $(CXX)
 
 SOURCES := MLADescription.cc Spectrum.cc farichres.cc

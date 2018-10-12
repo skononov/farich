@@ -14,6 +14,10 @@
 #include "Math/Factory.h"
 #include "Math/Functor.h"
 
+#ifdef _OPENMP
+# include <omp.h>
+#endif
+
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -403,7 +407,7 @@ MLADescription::Resolution& MLADescription::Calculate(double b, bool storeData)
     static const double eulergamma=0.5772156649;
     //normalizing coefficient of Cerenkov emission intensity assuming wavelength in nm and path in mm
     static const double K=2*M_PI/137.036/1e-6;
-    static double rn2[Nwl][Nlmax];
+    static double rn2[Nwl][Nlmax], tanc[Nwl][Nlmax];
 
     result.valid=false;
 
@@ -455,41 +459,40 @@ MLADescription::Resolution& MLADescription::Calculate(double b, bool storeData)
     double Rstep=(Rmax-Rmin)/Nr;
 
     //Preparing calculation to save CPU time
-    double rn;
     double wlstep=(wl2-wl1)/Nwl;
     double wl[Nwl];
     double lsc[Nwl];
+    
+    #pragma omp parallel for
     for(int iwl=0; iwl<Nwl; iwl++) {
         wl[iwl]=wl1+(iwl+0.5)*wlstep;
         lsc[iwl]=scatteringLength*pow(wl[iwl]/400.,4);
         for(int l=0; l<nlayers; l++) {
-            rn=b*AerogelRefIndex(vn[l],400.,wl[iwl]);
+            double rn=b*AerogelRefIndex(vn[l],400.,wl[iwl]);
             rn2[iwl][l]=rn*rn;
+            tanc[iwl][l]=sqrt(rn*rn-1);
         }
     }
 
-    double Npe=0;
-    double Rmean=0, R2mean=0;
-    double R, S, Swl, path, dR, tanc, x0, x1, att;
+    double Npe=0, Rmean=0, R2mean=0;
 
+    #pragma omp parallel for reduction(+:Npe,Rmean,R2mean)
     for(int i=0; i<Nr; i++) { //loop on radius
         double R=Rmin+i*Rstep, Rc=R+0.5*Rstep;
-        double S=0, Swl=0;
+        double S=0;
         for(int iwl=0; iwl<Nwl; iwl++) { //loop on wavelength
-            Swl=0;
+            double Swl=0;
             for(int l=0; l<nlayers; l++) { //loop on layers
                 if( rn2[iwl][l]<1.0 ) continue; //underthreshold velocity
-                dR=t0*sqrt((rn2[iwl][l]-1)/(b2-rn2[iwl][l]+1)); //shift of the ring in air
-                path=0; //path of light in the forward layers
+                double dR=t0*sqrt((rn2[iwl][l]-1)/(b2-rn2[iwl][l]+1)); //shift of the ring in air
+                double path=0; //path of light in the forward layers
                 for(int pl=0; pl<l; pl++) {
                     dR+=vt[pl]*sqrt((rn2[iwl][l]-1)/(rn2[iwl][pl]-rn2[iwl][l]+1));
                     path+=vt[pl]/sqrt(1-(rn2[iwl][l]-1)/rn2[iwl][pl]);
                 }
 
-                tanc=sqrt(rn2[iwl][l]-1);
-
-                x0=(R-dR)/tanc; //position of photon emission for the first radius point
-                x1=x0+Rstep/tanc; //position of photon emission for the second radius point
+                double x0=(R-dR)/tanc[iwl][l]; //position of photon emission for the first radius point
+                double x1=x0+Rstep/tanc[iwl][l]; //position of photon emission for the second radius point
 
                 if( x0<0. && x1<0. || x0>vt[l] && x1>vt[l] ) //no contribution into the current point from this layer
                     continue;
@@ -499,21 +502,18 @@ MLADescription::Resolution& MLADescription::Calculate(double b, bool storeData)
                 
                 path+=0.5*(x0+x1)*sqrt(rn2[iwl][l]);
 
+                double att=1.0;
                 if( scatteringLength>0 )
                     att=exp(-path/lsc[iwl]);
-                else
-                    att=1.0;
 
-                double dSwl = (1-1/rn2[iwl][l])*att*fabs(x1-x0);
+                double dSwl = (1-1/rn2[iwl][l])*att*(x1-x0);
                 if( storeData )
                     result.data.push_back({l, (float)R, (float)wl[iwl], (float)x0, (float)(K*0.01*pdEff.Evaluate(wl[iwl])*dSwl/wl[iwl]/wl[iwl])});
                 
                 Swl+=dSwl;
-
             } //loop on layers
 
             S+=K*0.01*pdEff.Evaluate(wl[iwl])*Swl*wlstep/wl[iwl]/wl[iwl];
-
         } //loop on wavelength
 
         if( storeData ) {
