@@ -8,7 +8,7 @@
 #include <string>
 #include <set>
 
-#include "TROOT.h"
+#include "TTree.h"
 #include "TRint.h"
 #include "TFile.h"
 #include "TMath.h"
@@ -19,7 +19,7 @@
 
 using namespace std;
 
-static const char *optstring="qn:s:N:D:T:p:b:e:o:O:mM:";
+static const char *optstring="qn:s:N:D:T:p:b:B:e:o:O:mM:";
 static const char *progname;
 
 //Параметры программы
@@ -33,6 +33,7 @@ static float  T=25.;
 static float  efficiency=1.0;
 static float  pixelsize=0;
 static float  opbeta=1.0;
+static float  beta=0.;
 static bool   minimize=false;
 static bool   polpar=false;
 static int    npol=2;
@@ -68,21 +69,24 @@ void Usage(int status)
         <<"эффективности фотонного детектора, представленых в двух колонках: длина волны (нм), эффективность (\%).\n\n"
         <<" OPTIONS:\n"
         <<"   -q                Задачный режим без графики и интерпретатора\n"
-        <<"   -e eff            Фактор к эффективности фотонного детектора 0<eff<=1 (default: "<<efficiency<<")\n"
+        <<"   -e eff            Фактор к эффективности фотонного детектора, 0<eff<=1 (default: "<<efficiency<<")\n"
         <<"   -p size           Размер квадратного пикселя фотонного детектора, мм (default: "<<pixelsize<<")\n"
         <<"   -D distance       Расстояние от начала радиатора до фотонного детектора, мм (default: "<<D<<")\n"
         <<"   -n ri1            Максимальный показатель преломления радиатора на 400 нм (default: "<<ri1<<")\n"
-        <<"   -N nlayers        Число слоев аэрогеля (default: "<<nlayers<<")\n"
+        <<"   -N nlayers        Число слоев аэрогеля, 0<nlayers<=100 (default: "<<nlayers<<")\n"
         <<"   -T thickness      Толщина радиатора, мм (default: "<<T<<")\n"
         <<"   -s Lsc            Длина рассеяния на 400 нм, мм (default: "<<Lsc<<")\n"
-        <<"   -b beta           Оптимизировать радиатор для данной скорости (default: "<<opbeta<<")\n"
+        <<"   -b beta           Оптимизировать радиатор для данной скорости частицы, 1/ri1<beta<=1 (default: "<<opbeta<<")\n"
+        <<"   -B beta           Сделать расчет для данной скорости частицы, 1/ri1<beta<=1 (default: скорость частицы для оптимизации)\n"
         <<"   -m                Оптимизировать радиатор по угловой ошибке на трек\n"
-        <<"   -M npol           При оптимизации представить профиль показателя преломления полиномом степени npol (>=1)\n"
+        <<"   -M npol           При оптимизации представить профиль показателя преломления полиномом степени npol >= 1\n"
         <<"   -o filename       Сохранить гистограмму распределения по радиусу в заданный ROOT-файл (default: "<<outfn<<")\n"
         <<"   -O filename       Сохранить описание детектора в заданный командный файл Geant4. По умолчанию - не сохранять.\n"
         <<endl;
     exit(status);
 }
+
+#define PERC(a) 100.*(res1.a/res.a-1)
 
 int main(int argc, char* argv[])
 {
@@ -146,6 +150,14 @@ int main(int argc, char* argv[])
             }
             opbeta=b;
         }
+        else if( opt=='B' ) {
+            float b=atof(optarg);
+            if( b<=0.0 || b>1.0 ) {
+                cerr<<optarg<<": неправильно задана скорость частицы для расчета"<<endl;
+                return 1;
+            }
+            beta=b;
+        }
         else if( opt=='e' ) {
             float e=atof(optarg);
             if( e<=0.0 || e>1.0 ) {
@@ -189,11 +201,19 @@ int main(int argc, char* argv[])
             <<": толщина радиатора больше расстояния до фотонного детектора"<<endl;
         return 1;
     }
-    if( ri1*opbeta < 1.0 ) {
+    if( ri1*opbeta <= 1.0 ) {
         cerr<<"ri1="<<ri1<<" beta="<<opbeta
-            <<": допороговая скорость в первом слое"<<endl;
+            <<": допороговая скорость для оптимизации в первом слое радиатора"<<endl;
         return 1;
     }
+    if( beta <= 0. ) 
+        beta = opbeta;
+    else if( ri1*beta <= 1.0 ) {
+        cerr<<"ri1="<<ri1<<" beta="<<beta
+            <<": допороговая скорость для расчета в первом слое радиатора"<<endl;
+        return 1;
+    }
+
     if( optind >= argc )
         Usage(1);
 
@@ -212,6 +232,7 @@ int main(int argc, char* argv[])
         <<"  полная толщина радиатора:                     "<<T<<" мм\n"
         <<"  длина рассеяния в аэрогеле на 400 нм:         "<<Lsc<<" мм\n"
         <<"  оптимизация для скорости:                     "<<opbeta<<"\n"
+        <<"  расчет для скорости:                          "<<beta<<"\n"
         <<"  минимизация "<<(minimize?"включена":"выключена")<<"\n";
         if( minimize ) {
             if( polpar )
@@ -260,65 +281,104 @@ int main(int argc, char* argv[])
     cout<<"Исходный аэрогелевый радиатор:"<<endl;
     mla.Print("  ");
 
-    struct MLADescription::Resolution res=mla.Calculate(true);
+    struct MLADescription::Resolution res=mla.Calculate(beta,true);
     cout.precision(4);
-    cout<<"  Среднее число фотоэлектронов: "<<res.npe<<"\n"
-        <<"  Средний радиус:               "<<res.radius<<" мм\n"
-        <<"  Ошибка радиуса на 1 фотон:    "<<res.sigma1<<" мм\n"
-        <<"  Ошибка радиуса на трек:       "<<res.sigma_t<<" мм\n"
-        <<"  Ошибка угла на трек:          "<<1e3*mla.GetAngleResolutionPerTrack()<<" мрад"<<endl;
+    cout<<"  Скорость частицы для расчета:                 "<<res.beta<<"\n"
+        <<"  Среднее число фотоэлектронов:                 "<<res.npe<<"\n"
+        <<"  Средний радиус:                               "<<res.radius<<" мм\n"
+        <<"  Ошибка радиуса на 1 фотон (с учетом пикселя): "<<res.sigma1<<" мм ("<<res.sigma1_px<<" мм)\n"
+        <<"  Ошибка радиуса на трек (с учетом пикселя):    "<<res.sigma_t<<" мм ("<<res.sigma_t_px<<" мм)\n"
+        <<"  Ошибка угла на 1 фотон (с учетом пикселя):    "<<res.sigma1_ang<<" мрад ("<<res.sigma1_ang_px<<" мрад)\n"
+        <<"  Ошибка угла на трек (с учетом пикселя):       "<<res.sigma_t_ang<<" мрад ("<<res.sigma_t_ang_px<<" мрад)"<<endl;
     cout.precision(6);
 
     if( minimize ) {
+        bool opres;
         if( polpar )
-            mla.OptimizePol(nlayers,npol,D,ri1);
+            opres = mla.OptimizePol(nlayers,npol,D,ri1);
         else
-            mla.OptimizeNT(nlayers,D,ri1);
+            opres = mla.OptimizeNT(nlayers,D,ri1);
         
-        cout<<"Оптимизированный аэрогелевый радиатор"<<endl;
-        mla.Print("  ");
+        if( opres ) {
+            cout<<"Оптимизированный аэрогелевый радиатор"<<endl;
+            mla.Print("  ");
 
-        res=mla.Calculate(true);
-        cout.precision(4);
-        cout<<"  Среднее число фотоэлектронов: "<<res.npe<<"\n"
-            <<"  Средний радиус:               "<<res.radius<<" мм\n"
-            <<"  Ошибка радиуса на 1 фотон:    "<<res.sigma1<<" мм\n"
-            <<"  Ошибка радиуса на трек:       "<<res.sigma_t<<" мм\n"
-            <<"  Ошибка угла на трек:          "<<1e3*mla.GetAngleResolutionPerTrack()<<" мрад"<<endl;
-        cout.precision(6);
+            struct MLADescription::Resolution res1=mla.Calculate(beta,true);
+            cout.precision(4);
+            cout<<"  Скорость частицы для расчета:                 "<<res1.beta<<"\n"
+                <<"  Среднее число фотоэлектронов:                 "<<res1.npe<<"\n"
+                <<"  Средний радиус:                               "<<res1.radius<<" мм ["<<setprecision(2)<<PERC(radius)<<"%]\n"
+                <<"  Ошибка радиуса на 1 фотон (с учетом пикселя): "<<setprecision(4)<<res1.sigma1<<" мм ("<<res.sigma1_px<<" мм) ["
+                <<setprecision(2)<<PERC(sigma1)<<"% ("<<PERC(sigma1_px)<<"%)]\n"
+                <<"  Ошибка радиуса на трек (с учетом пикселя):    "<<setprecision(4)<<res1.sigma_t<<" мм ("<<res.sigma_t_px<<" мм) ["
+                <<setprecision(2)<<PERC(sigma_t)<<"% ("<<PERC(sigma_t_px)<<"%)]\n"
+                <<"  Ошибка угла на 1 фотон (с учетом пикселя):    "<<setprecision(4)<<res1.sigma1_ang<<" мрад ("<<res.sigma1_ang_px<<" мрад) ["
+                <<setprecision(2)<<PERC(sigma1_ang)<<"% ("<<PERC(sigma1_ang_px)<<"%)]\n"
+                <<"  Ошибка угла на трек (с учетом пикселя):       "<<setprecision(4)<<res1.sigma_t_ang<<" мрад ("<<res.sigma_t_ang_px<<" мрад) ["
+                <<setprecision(2)<<PERC(sigma_t_ang)<<"% ("<<PERC(sigma_t_ang_px)<<"%)]\n"<<endl;
+            cout.precision(6);
+
+            res = res1; //copy optimized radiator results
+        } else
+            cout<<"Не удалось оптимизировать радиатор!\n"<<endl;
+    }
+
+    TFile *outfile=nullptr;
+    if( !outfn.empty() ) {
+        cout<<"Сохраняем распределение фотонов по радиусу в "<<outfn<<endl;
+        outfile = new TFile(outfn.c_str(),"RECREATE");
+        if( !outfile->IsOpen() ) {
+            cerr<<outfn<<": не могу открыть файл на запись"<<endl;
+            delete outfile;
+            outfile=nullptr;
+        }
     }
 
     TH1D hrad("hrad","Radius photoelectron distribution;radius, mm;dNpe/dR, mm^{-1}",MLADescription::Nr,res.rmin,res.rmax);
-    for(size_t i=0; i<res.s.size(); i++) hrad.SetBinContent(i+1,res.s[i]);
-
+    for(size_t i=0; i<res.s.size(); i++) {
+        hrad.SetBinContent(i+1,res.s[i]);
+    }
+    
     double *xbins = new double[nlayers+1];
     xbins[0] = 0.;
     for(int i=0; i<nlayers; i++) xbins[i+1] = xbins[i] + mla.GetThickness(i);
     TH1D hri("hri","Refractive index profile;radius, mm;refractive index",nlayers,xbins);
     for(int bin=1; bin<=nlayers; bin++) hri.SetBinContent(bin,mla.GetIndex(bin-1));
 
-    if( !outfn.empty() ) {
-        cout<<"Сохраняем распределение фотонов по радиусу в "<<outfn<<endl;
-        TFile *outfile=new TFile(outfn.c_str(),"RECREATE");
-        if( outfile->IsOpen() ) {
-            hrad.Write();
-            hri.Write();
-        } else
-            cerr<<outfn<<": не могу открыть файл на запись"<<endl;
-        outfile->Close();
-        delete outfile;
+    if( outfile ) {
+        MLADescription::CalcTuple tuple;
+        TTree* T = new TTree("T","FARICH resolution detailed calculation results");
+        T->Branch("data",&tuple,"l/I:r/F:wl/F:x0/F:s/F");
+
+        for(MLADescription::CalcTuple &_tuple : res.data) {
+            tuple = _tuple;
+            T->Fill();
+        }
+
+        // Writing ROOT file
+        hrad.Write();
+        hri.Write();
+        T->Write();
     }
 
     if( !macfn.empty() )
         write_geant4_macfile(macfn, mla);
 
     if( !batch ) {
-        TCanvas *c=new TCanvas("c1","c1");
+        if( outfile ) outfile->ReOpen("READ");
 
+        TCanvas *c1=new TCanvas("c1","c1",802,428);
+        c1->Divide(2,1);
+        c1->cd(1);
         hrad.Draw("l");
+        c1->cd(2);
+        hri.Draw();
 
         app->Run(kTRUE);
     }
+    
+    if( outfile )
+        delete outfile;
 
     return 0;
 }

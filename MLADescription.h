@@ -21,29 +21,41 @@ public:
     static const int Nwl=100; ///< Number of wavelength points for photon distribution calculation
     static const int Nlmax=100; ///< Maximum number of layers
         
+    /** Optimization option numbers */
     enum Optimization_t {
         NOT_OPTIMIZED = 0,
         NT_OPTIMIZATION = 1,
         POL_OPTIMIZATION = 2  
     };
+    /** Detailed calculation tuple */
     struct CalcTuple {
         int layer;
-        double tR, tWL, tX0, tS; ///< calculation tuple
+        float tR, tWL, tX0, tS;
     };
+
+    /** Calculation results data structure */
     struct Resolution {
         void reserve(int nl);
         bool valid;
+        double beta; ///< velocity for which the resolution was calculated
         double npe;
         double radius;
-        double sigma1;
-        double sigma_t;
-        double rmin, rmax;
+        double sigma1; ///< single photoelectron radius error with zero pixel
+        double sigma1_px; ///< single photoelectron radius error taking into account a pixel size
+        double sigma1_ang; ///< single photoelectron angle resolution with zero pixel
+        double sigma1_ang_px; ///< single photoelectron angle resolution taking into pixel size
+        double sigma_t; ///< photoelectron radius error per track with zero pixel
+        double sigma_t_px; ///< photoelectron radius error per track taking into pixel size
+        double sigma_t_ang; ///< single photoelectron angle resolution with zero pixel
+        double sigma_t_ang_px; ///< single photoelectron angle resolution taking into pixel size
+        double rmin, rmax; ///< radius range
+        double rstep; ///< step on radius
         std::vector<double> r, s; ///< photoelectron distribution on radius with Nr points
-        std::vector<CalcTuple> data; ///< all calculation data
+        std::vector<CalcTuple> data; ///< detailed calculation data
     };
         
 private:
-    static double tolerance; ///< allowed coordinate shift calculation error
+    static double tolerance;  ///< allowed coordinate shift calculation error
 
     int nlayers;              ///< number of layers in radiator
     double t0;                ///< proximity distance, mm
@@ -117,8 +129,11 @@ public:
      */
     bool MakeFixed(int N, double G, double n1);
 
-    /**Calculate radius resolution, number of photoelectrons, etc.*/
-    Resolution& Calculate(bool storeData=false);
+    /**Calculate radius resolution, number of photoelectrons, etc.
+     *  @param b particle velocity for which perform calculation, by default use the optimal velocity @c beta
+     *  @param storeData store detailed data from calculation
+     */
+    Resolution& Calculate(double b=0., bool storeData=false);
 
     /**Optimize focusing radiator for given number of layers, fixed total radiator thickness and refractive index of the first layer
      * @param N number of layers in radiator
@@ -180,8 +195,6 @@ public:
     /**Get last result of resolution calculation*/
     const Resolution& GetResolution() const { return result; }
 
-    double GetAngleResolutionPerTrack() const;
-    
     /**Get total thickness of radiator*/
     double GetTotalThickness() const { return std::accumulate(vt.begin(),vt.end(),0.); }
     

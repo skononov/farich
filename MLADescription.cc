@@ -4,8 +4,12 @@
 #include <cstring>
 #include <cassert>
 
+#include "gsl/gsl_poly.h" //for polynomial functions
+#include "gsl/gsl_sf_expint.h" //for exponential integral
+
 #include "Spectrum.h"
 
+#include "TDecompSVD.h"
 #include "Math/Minimizer.h"
 #include "Math/Factory.h"
 #include "Math/Functor.h"
@@ -36,9 +40,13 @@ void MLADescription::InitializeMinimizer()
 
 void MLADescription::Resolution::reserve(int nl)
 {
-    r.resize(Nr);
-    s.resize(Nr);
-    data.resize(Nr*Nwl*nl);
+    r.clear();
+    s.clear();
+    data.clear();
+
+    r.reserve(Nr);
+    s.reserve(Nr);
+    data.reserve(Nr*Nwl*nl);
 }
 
 MLADescription::MLADescription(double d, double b, double wl) :
@@ -84,6 +92,9 @@ void MLADescription::Clear()
     nlayers=0;
     optimization=0;
     result.valid=false;
+    result.r.clear();
+    result.s.clear();
+    result.data.clear();
 }
 
 void MLADescription::GoToAbs()
@@ -336,10 +347,14 @@ void MLADescription::Print(const char* pfx) const
     if( optimization==POL_OPTIMIZATION ) {
         cout.unsetf(std::ios::fixed);
         cout.setf(std::ios::scientific);        
-        cout << pfx << "Polynomial description: n(x1) + (x-x1)*P_"<<nPolCoef-1<<"(x)\n" 
-             << pfx << "Coefficients of the P_"<<nPolCoef-1<<":\n";
+        cout << pfx << "Polynomial description: n(x1) + (x-x1)*(C0";
+        for(int i=1; i<nPolCoef; i++) {
+            cout << "+C" << i << "*x";
+            if( i>1 ) cout << "^" << i;
+        }            
+        cout << ")\n";
         for(int i=0; i<nPolCoef; i++)
-            cout << pfx << "  C" << i << "=" << setprecision(4) << polCoef[i] << "\n";
+            cout << pfx << " C" << i << "=" << setprecision(4) << polCoef[i] << "\n";
         cout.setf(std::ios::fixed);
         cout.unsetf(std::ios::scientific);        
     }
@@ -362,10 +377,10 @@ double MLADescription::GetMaxSensitivityWL(double T) const
     double wlmax=400, smax=0;
 
     pdEff.GetRange(wl1,wl2);
-    double wlstep=(wl2-wl1)/(Nsp-1);    
+    double wlstep=(wl2-wl1)/Nwl;    
 
-    for(int i=0; i<Nsp; i++) {
-        double wl=wl1+i*wlstep;
+    for(int i=0; i<Nwl; i++) {
+        double wl=wl1+(i+0.5)*wlstep;
         double rn=AerogelRefIndex(vn[0],400.,wl)*beta;
         if( rn<=1.0 ) continue;
         double attFactor = 1.;
@@ -383,10 +398,7 @@ double MLADescription::GetMaxSensitivityWL(double T) const
     return wlmax;
 }
 
-
-#include <gsl/gsl_sf_expint.h> //for exponential integral
-
-MLADescription::Resolution& MLADescription::Calculate(bool storeData)
+MLADescription::Resolution& MLADescription::Calculate(double b, bool storeData)
 {
     static const double eulergamma=0.5772156649;
     //normalizing coefficient of Cerenkov emission intensity assuming wavelength in nm and path in mm
@@ -398,7 +410,10 @@ MLADescription::Resolution& MLADescription::Calculate(bool storeData)
     double wl1, wl2;
     pdEff.GetRange(wl1,wl2);
 
-    double b=beta, b2=b*b;
+    if( b<=0.) b=beta;
+    result.beta=b;
+    
+    double b2=b*b;
 
     //Find minimum and maximum radii of the ring
     double rnmin=b*AerogelRefIndex(vn[0],400.,wl2), rnmax=b*AerogelRefIndex(vn[0],400.,wl1);
@@ -437,15 +452,15 @@ MLADescription::Resolution& MLADescription::Calculate(bool storeData)
     if( storeData )
         result.reserve(nlayers);
 
-    double Rstep=(Rmax-Rmin)/(Nr-1);
+    double Rstep=(Rmax-Rmin)/Nr;
 
     //Preparing calculation to save CPU time
     double rn;
-    double wlstep=(wl2-wl1)/(Nwl-1);
+    double wlstep=(wl2-wl1)/Nwl;
     double wl[Nwl];
     double lsc[Nwl];
     for(int iwl=0; iwl<Nwl; iwl++) {
-        wl[iwl]=wl1+iwl*wlstep;
+        wl[iwl]=wl1+(iwl+0.5)*wlstep;
         lsc[iwl]=scatteringLength*pow(wl[iwl]/400.,4);
         for(int l=0; l<nlayers; l++) {
             rn=b*AerogelRefIndex(vn[l],400.,wl[iwl]);
@@ -458,7 +473,7 @@ MLADescription::Resolution& MLADescription::Calculate(bool storeData)
     double R, S, Swl, path, dR, tanc, x0, x1, att;
 
     for(int i=0; i<Nr; i++) { //loop on radius
-        double R=Rmin+i*Rstep;
+        double R=Rmin+i*Rstep, Rc=R+0.5*Rstep;
         double S=0, Swl=0;
         for(int iwl=0; iwl<Nwl; iwl++) { //loop on wavelength
             Swl=0;
@@ -491,7 +506,7 @@ MLADescription::Resolution& MLADescription::Calculate(bool storeData)
 
                 double dSwl = (1-1/rn2[iwl][l])*att*fabs(x1-x0);
                 if( storeData )
-                    result.data.push_back({l, R, wl[iwl], x0, K*0.01*pdEff.Evaluate(wl[iwl])*dSwl/wl[iwl]/wl[iwl]/Rstep});
+                    result.data.push_back({l, (float)R, (float)wl[iwl], (float)x0, (float)(K*0.01*pdEff.Evaluate(wl[iwl])*dSwl/wl[iwl]/wl[iwl])});
                 
                 Swl+=dSwl;
 
@@ -502,16 +517,13 @@ MLADescription::Resolution& MLADescription::Calculate(bool storeData)
         } //loop on wavelength
 
         if( storeData ) {
-            result.r[i]=R-Rstep;
-            result.s[i]=S/Rstep;
+            result.r.push_back(Rc);
+            result.s.push_back(S/Rstep);
         }
 
-        if( S!=0 ) {
-            Npe+=S;
-            Rmean+=R*S;
-            R2mean+=R*R*S;
-        }
-
+        Npe+=S;
+        Rmean+=Rc*S;
+        R2mean+=Rc*Rc*S;
     } //loop on radius
 
     if( !finite(Npe) || Npe<=0 ) {
@@ -523,29 +535,33 @@ MLADescription::Resolution& MLADescription::Calculate(bool storeData)
     R2mean/=Npe;
 
     result.npe=Npe;
-    result.radius=Rmean;
-    result.sigma1=sqrt(R2mean-Rmean*Rmean);
-    if( pixelSize!=0. ) result.sigma1=sqrt(result.sigma1*result.sigma1+pixelSize*pixelSize/12);
-    //Exact calculation of the error per track
-    double factor=(gsl_sf_expint_Ei(Npe)-eulergamma-log(Npe))/(exp(Npe)-1);
-    result.sigma_t=result.sigma1*sqrt(factor);
     result.rmin=Rmin;
     result.rmax=Rmax;
+    result.rstep=Rstep;
+
+    result.radius=Rmean;
+
+    result.sigma1=sqrt(R2mean-Rmean*Rmean);
+    result.sigma1_px=sqrt(R2mean-Rmean*Rmean+pixelSize*pixelSize/12);
+
+    double D=t0+0.5*GetTotalThickness(), fmm_mrad=1e3*D/(D*D+Rmean*Rmean);
+        
+    result.sigma1_ang=result.sigma1*fmm_mrad;
+    result.sigma1_ang_px=result.sigma1_px*fmm_mrad;
+
+    //Exact calculation of the error per track
+    double factor=sqrt((gsl_sf_expint_Ei(Npe)-eulergamma-log(Npe))/(exp(Npe)-1));
+
+    result.sigma_t=result.sigma1*factor;
+    result.sigma_t_px=result.sigma1_px*factor;
+
+    result.sigma_t_ang=result.sigma_t*fmm_mrad;
+    result.sigma_t_ang_px=result.sigma_t_px*fmm_mrad;
+
     result.valid=true;
 
     return result;
 }
-
-double MLADescription::GetAngleResolutionPerTrack() const
-{
-    double D = t0 + 0.5*GetTotalThickness();
-    double R = result.radius;
-    
-    return result.sigma_t*D/(D*D+R*R);
-}
-
-#include "TDecompSVD.h"
-#include "gsl/gsl_poly.h"
 
 void MLADescription::ApplyNTParameterization(const double* p)
 {
@@ -569,7 +585,7 @@ double MLADescription::EvalResolutionNT(const double* p)
 
     if( !result.valid ) return NAN;
 
-    return GetAngleResolutionPerTrack();
+    return result.sigma_t_ang;
 }
 
 void MLADescription::ApplyPolParameterization(const double* p)
@@ -597,7 +613,7 @@ double MLADescription::EvalResolutionPol(const double* p)
 
     if( !result.valid ) return NAN;
 
-    return GetAngleResolutionPerTrack();
+    return result.sigma_t_ang;
 }
 
 bool MLADescription::OptimizeNT(int N, double G, double n1)
