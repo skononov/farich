@@ -35,7 +35,7 @@ public:
 
     /** Calculation results data structure */
     struct Resolution {
-        void reserve(int nl);
+        void resize(int nl);
         bool valid;
         double beta; ///< velocity for which the resolution was calculated
         double npe;
@@ -204,7 +204,7 @@ public:
     double GetMaxSensitivityWL(double T=0) const;
 
     /**Formula of refractive index expressed through the refracted Cherenkov angle tangent*/
-    double rindex(double tg)
+    double rindex(double tg) const
     {
         double tg2=tg*tg;
         return sqrt((1+(rn[0]*rn[0]+1)*tg2)/(tg2+1));

@@ -33,24 +33,20 @@ void MLADescription::InitializeMinimizer()
 {
     if( !minimizer ) {
         minimizer = ROOT::Math::Factory::CreateMinimizer("Minuit2", "Migrad");
-        minimizer->SetMaxFunctionCalls(1000000);
+        minimizer->SetMaxFunctionCalls(100000);
         minimizer->SetMaxIterations(100000);
-        minimizer->SetTolerance(0.001);
+        minimizer->SetTolerance(0.01);
         minimizer->SetPrintLevel(1);
     } else {
         minimizer->Clear();
     }
 }
 
-void MLADescription::Resolution::reserve(int nl)
+void MLADescription::Resolution::resize(int nl)
 {
-    r.clear();
-    s.clear();
-    data.clear();
-
-    r.reserve(Nr);
-    s.reserve(Nr);
-    data.reserve(Nr*Nwl*nl);
+    r.resize(Nr);
+    s.resize(Nr);
+    data.resize(Nr*Nwl*nl);
 }
 
 MLADescription::MLADescription(double d, double b, double wl) :
@@ -448,13 +444,12 @@ MLADescription::Resolution& MLADescription::Calculate(double b, bool storeData)
 
     if( Rmax==0 ) return result;
 
-    if( !finite(Rmin) || !finite(Rmax) ) {
-        cout<<"MLADescription::Calculate(): Rmin="<<Rmin<<" Rmax="<<Rmax<<endl;
-        return result;
-    }
+    assert(finite(Rmin));
+    assert(finite(Rmax));
+    assert(Rmin<Rmax);
 
     if( storeData )
-        result.reserve(nlayers);
+        result.resize(nlayers);
 
     double Rstep=(Rmax-Rmin)/Nr;
 
@@ -481,9 +476,12 @@ MLADescription::Resolution& MLADescription::Calculate(double b, bool storeData)
         double R=Rmin+i*Rstep, Rc=R+0.5*Rstep;
         double S=0;
         for(int iwl=0; iwl<Nwl; iwl++) { //loop on wavelength
-            double Swl=0;
-            for(int l=0; l<nlayers; l++) { //loop on layers
-                if( rn2[iwl][l]<1.0 ) continue; //underthreshold velocity
+            double Swl=0, X0=0;
+            for(int l=0; l<nlayers; X0+=vt[l], l++) { //loop on layers
+                if( storeData )
+                    result.data[l*Nwl*Nr+iwl*Nr+i] = {l, (float)Rc, (float)wl[iwl], 0., 0.};
+                if( rn2[iwl][l]<=1.0 ) //underthreshold velocity
+                    continue;
                 double dR=t0*sqrt((rn2[iwl][l]-1)/(b2-rn2[iwl][l]+1)); //shift of the ring in air
                 double path=0; //path of light in the forward layers
                 for(int pl=0; pl<l; pl++) {
@@ -508,7 +506,7 @@ MLADescription::Resolution& MLADescription::Calculate(double b, bool storeData)
 
                 double dSwl = (1-1/rn2[iwl][l])*att*(x1-x0);
                 if( storeData )
-                    result.data.push_back({l, (float)R, (float)wl[iwl], (float)x0, (float)(K*0.01*pdEff.Evaluate(wl[iwl])*dSwl/wl[iwl]/wl[iwl])});
+                    result.data[l*Nwl*Nr+iwl*Nr+i] = {l, (float)Rc, (float)wl[iwl], (float)(X0+0.5*(x0+x1)), (float)(K*0.01*pdEff.Evaluate(wl[iwl])*dSwl*wlstep/wl[iwl]/wl[iwl])};
                 
                 Swl+=dSwl;
             } //loop on layers
@@ -517,8 +515,8 @@ MLADescription::Resolution& MLADescription::Calculate(double b, bool storeData)
         } //loop on wavelength
 
         if( storeData ) {
-            result.r.push_back(Rc);
-            result.s.push_back(S/Rstep);
+            result.r[i] = Rc;
+            result.s[i] = S/Rstep;
         }
 
         Npe+=S;
@@ -528,6 +526,7 @@ MLADescription::Resolution& MLADescription::Calculate(double b, bool storeData)
 
     if( !finite(Npe) || Npe<=0 ) {
         cout<<"MLADescription::Calculate(): Npe="<<Npe<<endl;
+        Print("!!!");
         return result;
     }
 
@@ -573,7 +572,7 @@ void MLADescription::ApplyNTParameterization(const double* p)
 
     for(int l=0; l<nlayers; l++) {
         vn[l] = p[2*l];
-        vt[l] = t[l];
+        vt[l] = std::max(0.,t[l]);
     }
 }
 
@@ -594,12 +593,12 @@ void MLADescription::ApplyPolParameterization(const double* p)
     if( nPolCoef==1 ) {
         polCoef[0] = p[0];
         for(int l=1; l<nlayers; l++) {
-            x += vt[l];
+            x += 0.5*(vt[l-1]+vt[l]);
             vn[l] = std::max(1.,vn[0] + (x-x0)*p[0]);
         }
     } else {
         for(int l=1; l<nlayers; l++) {
-            x += vt[l];
+            x += 0.5*(vt[l-1]+vt[l]);
             vn[l] = std::max(1.,vn[0] + (x-x0)*gsl_poly_eval(p,nPolCoef,x)); //polynomial with fixed value of refractive index in the middle of the first layer
         }
     }
@@ -647,6 +646,8 @@ bool MLADescription::OptimizeNT(int N, double G, double n1)
     
     InitializeMinimizer();
     
+    optimization = NT_OPTIMIZATION;
+
     ROOT::Math::Functor fcn(this,&MLADescription::EvalResolutionNT,2*nlayers); 
 
     minimizer->SetFunction(fcn);
@@ -654,7 +655,7 @@ bool MLADescription::OptimizeNT(int N, double G, double n1)
     char name[20];
     for(int l=0; l<nlayers; l++) {
         sprintf(name,"n%d",l+1);
-        minimizer->SetVariable(2*l, name, vn[l], 0.005);
+        minimizer->SetLimitedVariable(2*l, name, vn[l], 0.005, 1.0, 1.2);
         sprintf(name,"pt%d",l+1);
         minimizer->SetVariable(2*l+1, name, pt[l], 0.05);
     }
@@ -670,8 +671,6 @@ bool MLADescription::OptimizeNT(int N, double G, double n1)
 
     ApplyNTParameterization(minimizer->X());
 
-    optimization = NT_OPTIMIZATION;
-    
     return true;
 }
 
@@ -694,8 +693,12 @@ bool MLADescription::OptimizePol(int N, int npol, double G, double nmax)
         return false;
     }
 
+    //Construct a fixed radiator with at most 10 layers for estimation of gradient
+    MakeFixed(std::min(10,N),G,nmax);
+    double grad=(vn.front()-vn.back())/(G-t0-0.5*(vt.front()+vt.back()));
+
     Clear();
-    
+
     cout << "Optimize radiator with polynomial parameterization" << endl;
 
     nlayers = N;
@@ -707,14 +710,17 @@ bool MLADescription::OptimizePol(int N, int npol, double G, double nmax)
     
     InitializeMinimizer();
 
+    optimization = POL_OPTIMIZATION;
+
     ROOT::Math::Functor fcn(this,&MLADescription::EvalResolutionPol,nPolCoef); 
 
     minimizer->SetFunction(fcn);
     // Set the free variables to be minimized
+    minimizer->SetVariable(0, "C0", -grad, 0.1*grad);
     char name[20];
-    for(int i=0; i<nPolCoef; i++) {
-        sprintf(name,"c%d",i);
-        minimizer->SetVariable(i, name, 0., 1e-4/pow(T,i));
+    for(int i=1; i<nPolCoef; i++) {
+        sprintf(name,"C%d",i);
+        minimizer->SetVariable(i, name, 0., 0.1*grad/pow(T,i));
     }
 
     minimizer->Minimize();
@@ -730,7 +736,5 @@ bool MLADescription::OptimizePol(int N, int npol, double G, double nmax)
     //Copy final polynomial coefficients to this object
     std::copy(p,p+nPolCoef,polCoef.begin());
     
-    optimization = POL_OPTIMIZATION;
-
     return true;
 }

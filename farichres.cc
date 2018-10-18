@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <libgen.h>
 #include <string>
+#include <algorithm>
 #include <set>
 
 #include "TTree.h"
@@ -19,7 +20,7 @@
 
 using namespace std;
 
-static const char *optstring="qn:s:N:D:T:p:b:B:e:o:O:mM:";
+static const char *optstring="qn:s:N:D:T:p:b:B:e:o:O:m::";
 static const char *progname;
 
 //Параметры программы
@@ -35,6 +36,7 @@ static float  pixelsize=0;
 static float  opbeta=1.0;
 static float  beta=0.;
 static bool   minimize=false;
+static string param="nt";
 static bool   polpar=false;
 static int    npol=2;
 static string outfn = "farichres.root";
@@ -61,6 +63,25 @@ static void write_geant4_macfile(string macfn,MLADescription& mla)
     }
 }
 
+
+string parse_param(string p, int &npol)
+{
+    transform(p.begin(), p.end(), p.begin(), [](unsigned char c){ return tolower(c); });
+    if( p.find_first_of("pol")==0 ) {
+        try {
+            npol=stoi(p.substr(3));
+        }
+        catch(...) {
+            return string();
+        }
+        if( npol<1 || npol>10 ) return string();
+        p="pol";
+    } else if( p!="nt" )
+        return string();
+
+    return p;                   
+}
+
 void Usage(int status)
 {
     cout<<"Usage: "<<progname<<" [OPTIONS] qefile\n"
@@ -78,8 +99,7 @@ void Usage(int status)
         <<"   -s Lsc            Длина рассеяния на 400 нм, мм (default: "<<Lsc<<")\n"
         <<"   -b beta           Оптимизировать радиатор для данной скорости частицы, 1/ri1<beta<=1 (default: "<<opbeta<<")\n"
         <<"   -B beta           Сделать расчет для данной скорости частицы, 1/ri1<beta<=1 (default: скорость частицы для оптимизации)\n"
-        <<"   -m                Оптимизировать радиатор по угловой ошибке на трек\n"
-        <<"   -M npol           При оптимизации представить профиль показателя преломления полиномом степени npol >= 1\n"
+        <<"   -m [param]        Оптимизировать радиатор по угловой ошибке на трек, используя параметризацию param: nt, polN (N=1..10) (default: "<<param<<")\n"
         <<"   -o filename       Сохранить гистограмму распределения по радиусу в заданный ROOT-файл (default: "<<outfn<<")\n"
         <<"   -O filename       Сохранить описание детектора в заданный командный файл Geant4. По умолчанию - не сохранять.\n"
         <<endl;
@@ -93,6 +113,8 @@ int main(int argc, char* argv[])
     progname=argv[0];
 
     if( argc==1 ) Usage(0);
+
+    int npol;
 
 //=========Обработка параметров программы==========//
     int opt;
@@ -175,15 +197,14 @@ int main(int argc, char* argv[])
             pixelsize=s;
         }
         else if( opt=='m' ) {
-            minimize=true;
-        }
-        else if( opt=='M' ) {
-            polpar=true;
-            npol=atoi(optarg);
-            if( npol<1 ) {
-                cerr<<optarg<<": степень многочлена должэна быть больше 0"<<endl;
-                return 1;
+            if( optarg ) {
+                param = parse_param(optarg, npol);
+                if( param.empty() ) {
+                    cerr<<optarg<<": неизвестный метод параметризации"<<endl;
+                    return 1;
+                }
             }
+            minimize=true;
         }
         else if( opt=='o' ) {
             outfn=optarg;
@@ -232,14 +253,13 @@ int main(int argc, char* argv[])
         <<"  полная толщина радиатора:                     "<<T<<" мм\n"
         <<"  длина рассеяния в аэрогеле на 400 нм:         "<<Lsc<<" мм\n"
         <<"  оптимизация для скорости:                     "<<opbeta<<"\n"
-        <<"  расчет для скорости:                          "<<beta<<"\n"
-        <<"  минимизация "<<(minimize?"включена":"выключена")<<"\n";
-        if( minimize ) {
-            if( polpar )
-                cout << " параметризация профиля показателя многочленом\n";
-            else
-                cout << " параметризация показателей и толщин слоев\n";
-        }
+        <<"  расчет для скорости:                          "<<beta<<"\n";
+    if( minimize ) {
+        if( param=="nt" ) 
+            cout<<"  оптимизация радиатора с методом параметризации NT\n";
+        else
+            cout<<"  оптимизация радиатора с методом параметризации pol"<<npol<<"\n";
+    }
     if( !outfn.empty() ) cout<<"  выходной root-файл: "<<outfn<<"\n";
     if( !macfn.empty() ) cout<<"  файл макроса для Geant4: "<<macfn<<"\n";
     cout<<"________________________________________________"<<endl;
@@ -294,7 +314,7 @@ int main(int argc, char* argv[])
 
     if( minimize && nlayers>1 ) {
         bool opres;
-        if( polpar )
+        if( param=="pol" )
             opres = mla.OptimizePol(nlayers,npol,D,ri1);
         else
             opres = mla.OptimizeNT(nlayers,D,ri1);
@@ -351,6 +371,7 @@ int main(int argc, char* argv[])
         MLADescription::CalcTuple tuple;
         TTree* T = new TTree("T","FARICH resolution detailed calculation results");
         T->Branch("data",&tuple,"l/I:r/F:wl/F:x0/F:s/F");
+        T->SetMarkerStyle(7);
 
         for(MLADescription::CalcTuple &_tuple : res.data) {
             tuple = _tuple;
