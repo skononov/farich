@@ -632,7 +632,7 @@ double MLADescription::EvalResolutionPol(const double *p)
 bool MLADescription::OptimizeNT(int N, double G, double n1)
 {
     // Make focusing radiator via analytical calculations as the first approximaiton
-    MakeFixed(N, G, n1);
+    if (!MakeFixed(N, G, n1)) return false;
 
     cout << "Optimize radiator with NT parameterization" << endl;
 
@@ -663,6 +663,10 @@ bool MLADescription::OptimizeNT(int N, double G, double n1)
 
     optimization = NT_OPTIMIZATION;
 
+    // Define errors for 10% resolution variation based on current radiator resolution
+    Calculate();
+    minimizer->SetErrorDef(0.1*result.sigma_t_ang);
+
     ROOT::Math::Functor fcn(this, &MLADescription::EvalResolutionNT, 2 * nlayers);
 
     minimizer->SetFunction(fcn);
@@ -672,7 +676,7 @@ bool MLADescription::OptimizeNT(int N, double G, double n1)
         sprintf(name, "n%d", l + 1);
         minimizer->SetLimitedVariable(2 * l, name, vn[l], 0.005, 1.0, 1.2);
         sprintf(name, "pt%d", l + 1);
-        minimizer->SetVariable(2 * l + 1, name, pt[l], 0.05);
+        minimizer->SetVariable(2 * l + 1, name, pt[l], 0.5);
     }
     minimizer->FixVariable(0);
     minimizer->FixVariable(1);
@@ -712,7 +716,7 @@ bool MLADescription::OptimizePol(int N, int npol, double G, double nmax)
     }
 
     // Construct a fixed radiator with at most 10 layers for estimation of gradient
-    MakeFixed(std::min(10, N), G, nmax);
+    if (!MakeFixed(std::min(10, N), G, nmax)) return false;
     double grad = (vn.front() - vn.back()) / (G - t0 - 0.5 * (vt.front() + vt.back()));
 
     Clear();
@@ -729,6 +733,10 @@ bool MLADescription::OptimizePol(int N, int npol, double G, double nmax)
     InitializeMinimizer();
 
     optimization = POL_OPTIMIZATION;
+
+    // Define errors for 10% resolution variation based on current radiator resolution
+    Calculate();
+    minimizer->SetErrorDef(0.1*result.sigma_t_ang);
 
     ROOT::Math::Functor fcn(this, &MLADescription::EvalResolutionPol, nPolCoef);
 
