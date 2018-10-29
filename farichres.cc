@@ -324,8 +324,8 @@ int main(int argc, char *argv[])
             struct MLADescription::Resolution res1 = mla.Calculate(beta, true);
             cout.precision(4);
             cout << "  Скорость частицы для расчета:                 " << res1.beta << "\n"
-                 << "  Среднее число фотоэлектронов:                 " << res1.npe << "\n"
-                 << "  Средний радиус:                               " << res1.radius << " мм [" << setprecision(2)
+                 << "  Среднее число фотоэлектронов:                 " << res1.npe << " [" << setprecision(2) << PERC(npe) << "%]\n"
+                 << "  Средний радиус:                               " << setprecision(4) << res1.radius << " мм [" << setprecision(2)
                  << PERC(radius) << "%]\n"
                  << "  Ошибка радиуса на 1 фотон (с учетом пикселя): " << setprecision(4) << res1.sigma1 << " мм ("
                  << res1.sigma1_px << " мм) [" << setprecision(2) << PERC(sigma1) << "% (" << PERC(sigma1_px) << "%)]\n"
