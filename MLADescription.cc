@@ -343,22 +343,22 @@ void MLADescription::Print(const char *pfx) const
     if (optimization == POL_OPTIMIZATION) {
         cout.unsetf(std::ios::fixed);
         cout.setf(std::ios::scientific);
-        cout << pfx << "Polynomial description: n(x1) + (x-x1)*(C0";
-        for (int i = 1; i < nPolCoef; i++) {
-            cout << "+C" << i << "*x";
+        cout << pfx << "Polynomial description: n(x1)";
+        for (int i = 1; i <= nPolCoef; i++) {
+            cout << " + C" << i << "*(x-x1)";
             if (i > 1)
                 cout << "^" << i;
         }
-        cout << ")\n";
-        for (int i = 0; i < nPolCoef; i++)
-            cout << pfx << " C" << i << "=" << setprecision(4) << polCoef[i] << "\n";
+        cout << "\n";
+        for (int i = 1; i <= nPolCoef; i++)
+            cout << pfx << " C" << i << "=" << setprecision(4) << polCoef[i-1] << "\n";
         cout.setf(std::ios::fixed);
         cout.unsetf(std::ios::scientific);
     }
     cout << pfx << "Layer thicknesses and refractive indices (20 layers at most):\n";
-    for (int i = 0; i < std::min(20, nlayers); i++) {
-        cout << pfx << " Layer " << setw(2) << i + 1 << ": n=" << setprecision(4) << vn[i] << setprecision(2)
-             << " t=" << vt[i] << "\n";
+    for (int l = 0; l < std::min(20, nlayers); l++) {
+        cout << pfx << " Layer" << setw(3) << l + 1 << ": n=" << setprecision(4) << vn[l] << setprecision(2)
+             << " t=" << vt[l] << "\n";
     }
     if (nlayers > 20)
         cout << pfx << " ......\n";
@@ -597,22 +597,18 @@ double MLADescription::EvalResolutionNT(const double *p)
 
 void MLADescription::ApplyPolParameterization(const double *p)
 {
-    double x0 = vt[0] * 0.5, x = x0;
+    double dx = 0.;
+    std::copy(p, p+nPolCoef, polCoef.begin());
     if (nPolCoef == 1) {
-        polCoef[0] = p[0];
         for (int l = 1; l < nlayers; l++) {
-            x += 0.5 * (vt[l - 1] + vt[l]);
-            vn[l] = std::max(1., vn[0] + (x - x0) * p[0]);
+            dx += 0.5 * (vt[l - 1] + vt[l]);
+            vn[l] = std::max(1., vn[0] + dx * p[0]);
         }
     } else {
         for (int l = 1; l < nlayers; l++) {
-            x += 0.5 * (vt[l - 1] + vt[l]);
-            vn[l] = std::max(
-                1.,
-                vn[0] + (x - x0) *
-                            gsl_poly_eval(
-                                p, nPolCoef,
-                                x)); // polynomial with fixed value of refractive index in the middle of the first layer
+            dx += 0.5 * (vt[l - 1] + vt[l]);
+            // polynomial with fixed value of refractive index in the middle of the first layer
+            vn[l] = std::max(1., vn[0] + dx * gsl_poly_eval(p, nPolCoef, dx)); 
         }
     }
 }
@@ -633,6 +629,9 @@ bool MLADescription::OptimizeNT(int N, double G, double n1)
 {
     // Make focusing radiator via analytical calculations as the first approximaiton
     if (!MakeFixed(N, G, n1)) return false;
+    
+    // Skip optimization for a single layer
+    if (N==1) return true;
 
     cout << "Optimize radiator with NT parameterization" << endl;
 
@@ -670,7 +669,7 @@ bool MLADescription::OptimizeNT(int N, double G, double n1)
     ROOT::Math::Functor fcn(this, &MLADescription::EvalResolutionNT, 2 * nlayers);
 
     minimizer->SetFunction(fcn);
-    // Set the free variables to be minimized
+    // Set the free variables
     char name[20];
     for (int l = 0; l < nlayers; l++) {
         sprintf(name, "n%d", l + 1);
@@ -693,7 +692,7 @@ bool MLADescription::OptimizeNT(int N, double G, double n1)
     return true;
 }
 
-bool MLADescription::OptimizePol(int N, int npol, double G, double nmax)
+bool MLADescription::OptimizePol(int N, int npol, double G, double nmax, bool sameThick)
 {
     if (N < 1 || N > Nlmax) {
         cerr << "MLADescription::OptimizePol(): Error: invalid number of layers " << N << ". Should be between 1 and "
@@ -715,24 +714,58 @@ bool MLADescription::OptimizePol(int N, int npol, double G, double nmax)
         return false;
     }
 
-    // Construct a fixed radiator with at most 10 layers for estimation of gradient
-    if (!MakeFixed(std::min(10, N), G, nmax)) return false;
-    double grad = (vn.front() - vn.back()) / (G - t0 - 0.5 * (vt.front() + vt.back()));
+    // Estimate initial values of parameters by linear fitting of the fast optimized radiator
+    if (!MakeFixed(N, G, nmax)) return false;
+    
+    // Skip optimization for a single layer
+    if (N == 1) return true;    
 
-    Clear();
-
+    TVectorD C(npol);
+    if (N > 2) {
+        TVectorD b(N-1);
+        TMatrixD A(N-1,npol);
+        float dx = 0.;
+        for(int l=1; l<N; l++) {
+            dx += 0.5 * (vt[l-1] + vt[l]);
+            b[l-1] = (vn[l]-nmax)/dx;
+            for(int k=0; k<npol; k++)
+                A[l-1][k] = pow(dx,k);
+        }
+        
+        TDecompSVD svd(A);
+        Bool_t ok=kTRUE;
+    
+        C = svd.Solve(b,ok);
+    
+        if (!ok) {
+            cerr << "MLADescription::OptimizePol(): Error: Can not determine initial parameter values" << endl;
+            return false;
+        }
+    } else { // N==2
+        // Gradient estimation (negative)
+        C[0] = 2. * (vn[1]-vn[0]) / (vt[0]+vt[1]);
+    }
+    
     cout << "Optimize radiator with polynomial parameterization" << endl;
 
-    nlayers = N;
-    nPolCoef = npol;
-    polCoef.resize(npol);
     double T = G - t0; // total radiator thickness
-    vn.resize(nlayers, nmax);
-    vt.resize(nlayers, T / nlayers);
+
+    // Make layers of the same thickness if sameThick is true
+    if (sameThick) {
+        Clear();
+        nlayers = N;
+        vn.resize(nlayers, nmax);
+        vt.resize(nlayers, T / nlayers);
+    }
+
+    nPolCoef = npol;
+    polCoef.resize(nPolCoef);
 
     InitializeMinimizer();
 
     optimization = POL_OPTIMIZATION;
+
+    ApplyPolParameterization(C.GetMatrixArray());
 
     // Define errors for 10% resolution variation based on current radiator resolution
     Calculate();
@@ -741,12 +774,12 @@ bool MLADescription::OptimizePol(int N, int npol, double G, double nmax)
     ROOT::Math::Functor fcn(this, &MLADescription::EvalResolutionPol, nPolCoef);
 
     minimizer->SetFunction(fcn);
-    // Set the free variables to be minimized
-    minimizer->SetVariable(0, "C0", -grad, 0.1 * grad);
+    // Set the free variables
     char name[20];
-    for (int i = 1; i < nPolCoef; i++) {
-        sprintf(name, "C%d", i);
-        minimizer->SetVariable(i, name, 0., 0.1 * grad / pow(T, i));
+    for (int i = 0; i < nPolCoef; i++) {
+        sprintf(name, "C%d", i+1);
+        double initStep = 0.01*std::max(fabs(polCoef[i]), fabs(polCoef[0])/pow(T,i)); // should be small but not zero
+        minimizer->SetVariable(i, name, polCoef[i], initStep);
     }
 
     minimizer->Minimize();
@@ -756,11 +789,7 @@ bool MLADescription::OptimizePol(int N, int npol, double G, double nmax)
         return false;
     }
 
-    const double *p = minimizer->X();
-    ApplyPolParameterization(p);
-
-    // Copy final polynomial coefficients to this object
-    std::copy(p, p + nPolCoef, polCoef.begin());
+    ApplyPolParameterization(minimizer->X());
 
     return true;
 }

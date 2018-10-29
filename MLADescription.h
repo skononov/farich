@@ -150,8 +150,9 @@ class MLADescription {
      * @param npol degree of polynomial, the same as the number of free coefficients during optimization.
      * @param G sum of total radiator thickness and proximity distance
      * @param n1 refractive index of the first layer (most downstream layer)
+     * @param sameThick if set make thicknesses the same, otherwise take thicknesses from the fast optimization
      */
-    bool OptimizePol(int N, int npol, double G, double nmax);
+    bool OptimizePol(int N, int npol, double G, double nmax, bool sameThick=true);
 
     /**Set proximity distance: distance from output face of the radiator and photodetection plane*/
     void SetProximityDistance(double d)

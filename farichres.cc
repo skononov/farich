@@ -36,9 +36,9 @@ static float pixelsize = 0;
 static float opbeta = 1.0;
 static float beta = 0.;
 static bool minimize = false;
-static string param = "nt";
 static bool polpar = false;
 static int npol = 2;
+static bool samethick = false;
 static string outfn = "farichres.root";
 static string macfn;
 
@@ -63,25 +63,33 @@ static void write_geant4_macfile(string macfn, MLADescription &mla)
     }
 }
 
-string parse_param(string p, int &npol)
+static bool parse_param(string p)
 {
     transform(p.begin(), p.end(), p.begin(), [](unsigned char c) { return tolower(c); });
+    cout << "Option for minimization: " << p << endl;
     if (p.find_first_of("pol") == 0) {
         try {
             npol = stoi(p.substr(3));
         } catch (...) {
-            return string();
+            return false;
         }
         if (npol < 1 || npol > 10)
-            return string();
-        p = "pol";
-    } else if (p != "nt")
-        return string();
+            return false;
+        polpar = true;
+        if (p.back() == 's')
+            samethick = true;
+        else
+            samethick = false;
+        return true; 
+    } else if (p == "nt") {
+        polpar = false;
+        return true;
+    }
 
-    return p;
+    return false;
 }
 
-void Usage(int status)
+static void Usage(int status)
 {
     cout
         << "Usage: " << progname << " [OPTIONS] qefile\n"
@@ -101,9 +109,8 @@ void Usage(int status)
         << opbeta << ")\n"
         << "   -B beta           Сделать расчет для данной скорости частицы, 1/ri1<beta<=1 (default: скорость частицы "
            "для оптимизации)\n"
-        << "   -m[param]         Оптимизировать радиатор по угловой ошибке на трек, используя параметризацию param: "
-           "nt, polN (N=1..10) (default: "
-        << param << ")\n"
+        << "   -m[param]         Оптимизировать радиатор по угловой ошибке на трек, используя параметризацию param:\n"
+        << "                       nt, polN[s] (N=1..10, s - одинаковая толщина слоев) (default: nt)\n"
         << "   -o filename       Сохранить гистограмму распределения по радиусу в заданный ROOT-файл (default: "
         << outfn << ")\n"
         << "   -O filename       Сохранить описание детектора в заданный командный файл Geant4. По умолчанию - не "
@@ -120,8 +127,6 @@ int main(int argc, char *argv[])
 
     if (argc == 1)
         Usage(0);
-
-    int npol;
 
     //=========Обработка параметров программы==========//
     int opt;
@@ -195,8 +200,7 @@ int main(int argc, char *argv[])
             pixelsize = s;
         } else if (opt == 'm') {
             if (optarg) {
-                param = parse_param(optarg, npol);
-                if (param.empty()) {
+                if (!parse_param(optarg)) {
                     cerr << optarg << ": неизвестный метод параметризации" << endl;
                     return 1;
                 }
@@ -227,7 +231,11 @@ int main(int argc, char *argv[])
              << endl;
         return 1;
     }
-
+    if (minimize && nlayers == 1) {
+        cerr << "Оптимизация однослойного радиатора невозможна" << endl;
+        minimize = false;
+    }
+    
     if (optind >= argc)
         Usage(1);
 
@@ -248,10 +256,16 @@ int main(int argc, char *argv[])
          << "  оптимизация для скорости:                     " << opbeta << "\n"
          << "  расчет для скорости:                          " << beta << "\n";
     if (minimize) {
-        if (param == "nt")
-            cout << "  оптимизация радиатора с методом параметризации NT\n";
-        else
-            cout << "  оптимизация радиатора с методом параметризации pol" << npol << "\n";
+        if (polpar) {
+            cout << "  Pol" << npol << "-оптимизация радиатора";
+            if (samethick)
+                cout << " с одинаковыми толщинами слоев\n";
+            else
+                cout << " с толщинами слоев из быстрой оптимизации\n";
+        } else
+            cout << "  NT-оптимизация радиатора\n";
+    } else {
+        cout << "  только быстрая оптимизация радиатора\n";
     }
     if (!outfn.empty())
         cout << "  выходной root-файл: " << outfn << "\n";
@@ -310,10 +324,10 @@ int main(int argc, char *argv[])
          << " мрад)" << endl;
     cout.precision(6);
 
-    if (minimize && nlayers > 1) {
+    if (minimize) {
         bool opres;
-        if (param == "pol")
-            opres = mla.OptimizePol(nlayers, npol, D, ri1);
+        if (polpar)
+            opres = mla.OptimizePol(nlayers, npol, D, ri1, samethick);
         else
             opres = mla.OptimizeNT(nlayers, D, ri1);
 
@@ -343,8 +357,6 @@ int main(int argc, char *argv[])
             res = res1; // copy optimized radiator results
         } else
             cout << "Не удалось оптимизировать радиатор!" << endl;
-    } else if (minimize && nlayers == 1) {
-        cerr << "Оптимизация однослойного радиатора невозможна!" << endl;
     }
 
     TFile *outfile = nullptr;
