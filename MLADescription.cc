@@ -188,10 +188,10 @@ bool MLADescription::MakeLayers(int N, double n1, double t1)
     while (i < N) { // loop on layer number
         // derive index of the i-th layer
         if (MakeAlayer() != 0)
-            break;
+            return false;
         i++;
     }
-
+    
     GoToAbs();
 
     return true;
@@ -235,7 +235,7 @@ bool MLADescription::MakeGabarit(double G, double n1, double rt1)
     do { // loop until required thickness gained
         T += delta;
         if (MakeAlayer() != 0)
-            return i;           // something wrong with calculation
+            return false;           // something wrong with calculation
         delta = t0 * rt.back(); // thickness of a latest layer evaluated
         i++;
     } while (T + delta < Tmax);
@@ -312,7 +312,7 @@ bool MLADescription::MakeFixed(int N, double G, double n1)
             T += t0 * rt[i + 1];
         }
         if (i < N)
-            break; // layers calculation failed
+            return false; // layers calculation failed
 
         t1 += (Tgoal - T) * t1 / T;
 
