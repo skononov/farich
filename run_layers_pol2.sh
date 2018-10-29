@@ -3,7 +3,7 @@
 qefile='data/mppc14160.dat'
 eff=0.82
 pixel=3
-nlarr=(1 2 4 8 10 20 30 40 50 75 100)
+nlarr=(1 2 3 4 5 7 10 15 20 30 40 50 75 100)
 datfn=${0%.sh}.dat
 logfn=${0%.sh}.log
 
