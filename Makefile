@@ -16,7 +16,7 @@ DEPS := $(SOURCES:.cc=.cc.d)
 	$(CXX) -c $(CXXFLAGS) $< -o $@
 
 %.cc.d: %.cc
-	@echo "Gererating dependencies for $<"    
+	@echo "Generating dependencies for $<"    
 	@$(CC) -MM $(CXXFLAGS) $< -MF $@
 
 farichres: $(OBJECTS)
