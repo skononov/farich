@@ -328,15 +328,15 @@ int main(int argc, char *argv[])
                  << "  Средний радиус:                               " << res1.radius << " мм [" << setprecision(2)
                  << PERC(radius) << "%]\n"
                  << "  Ошибка радиуса на 1 фотон (с учетом пикселя): " << setprecision(4) << res1.sigma1 << " мм ("
-                 << res.sigma1_px << " мм) [" << setprecision(2) << PERC(sigma1) << "% (" << PERC(sigma1_px) << "%)]\n"
+                 << res1.sigma1_px << " мм) [" << setprecision(2) << PERC(sigma1) << "% (" << PERC(sigma1_px) << "%)]\n"
                  << "  Ошибка радиуса на трек (с учетом пикселя):    " << setprecision(4) << res1.sigma_t << " мм ("
-                 << res.sigma_t_px << " мм) [" << setprecision(2) << PERC(sigma_t) << "% (" << PERC(sigma_t_px)
+                 << res1.sigma_t_px << " мм) [" << setprecision(2) << PERC(sigma_t) << "% (" << PERC(sigma_t_px)
                  << "%)]\n"
                  << "  Ошибка угла на 1 фотон (с учетом пикселя):    " << setprecision(4) << res1.sigma1_ang
-                 << " мрад (" << res.sigma1_ang_px << " мрад) [" << setprecision(2) << PERC(sigma1_ang) << "% ("
+                 << " мрад (" << res1.sigma1_ang_px << " мрад) [" << setprecision(2) << PERC(sigma1_ang) << "% ("
                  << PERC(sigma1_ang_px) << "%)]\n"
                  << "  Ошибка угла на трек (с учетом пикселя):       " << setprecision(4) << res1.sigma_t_ang
-                 << " мрад (" << res.sigma_t_ang_px << " мрад) [" << setprecision(2) << PERC(sigma_t_ang) << "% ("
+                 << " мрад (" << res1.sigma_t_ang_px << " мрад) [" << setprecision(2) << PERC(sigma_t_ang) << "% ("
                  << PERC(sigma_t_ang_px) << "%)]" << endl;
             cout.precision(6);
 
