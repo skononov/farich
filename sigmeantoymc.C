@@ -20,11 +20,14 @@ void sigmeantoymc(int nstat=10000)
     TGraph *gsigmean = new TGraph(np);
     
     TF1* fsigmean = new TF1("fsigmean", func_sigmean, 0., 1.1*nmax, 0);
+    fsigmean->SetLineStyle(1);
     fsigmean->SetLineColor(kBlue);
     TF1* fsigmean0 = new TF1("fsigmean0", "1./sqrt(x)", 0., 1.1*nmax);
+    fsigmean0->SetLineStyle(7);
     fsigmean0->SetLineColor(kRed);
     TF1* fsigmean1 = new TF1("fsigmean1", "1./sqrt(x/(1-exp(-x)))", 0., 1.1*nmax);
-    fsigmean1->SetLineColor(kGreen);
+    fsigmean1->SetLineStyle(5);
+    fsigmean1->SetLineColor(kMagenta);
     
     double n=nmin;
     for(int p=0; p<np; p++, n*=f) {
@@ -51,6 +54,7 @@ void sigmeantoymc(int nstat=10000)
     TCanvas *c1 = new TCanvas("c1","c1");
     
     c1->DrawFrame(nmin/f,0.,nmax*f,1.05,";#nu;#sigma(#bar{x})");
+    c1->SetLogx();
     gsigmean->Draw("p");
     fsigmean->Draw("same");
     fsigmean0->Draw("same");
@@ -65,5 +69,5 @@ void sigmeantoymc(int nstat=10000)
     leg->AddEntry(fsigmean,"#sqrt{(Ei(#nu)-#gamma-log#nu)/(e^{#nu}-1)}","l");
     leg->Draw();
     
-    c1->SetLogx();
+    c1->Print("sigmean.pdf");
 }
