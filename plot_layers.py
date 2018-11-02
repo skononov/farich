@@ -2,10 +2,8 @@
 
 import sys
 import numpy as np
+import numpy.ma as ma
 import matplotlib.pyplot as plt
-
-#plt.ion()
-plt.rc('font', family='serif')
 
 def diff(a, b, rel=False):
    d = []
@@ -29,43 +27,77 @@ def diff(a, b, rel=False):
       else:
          ita.iternext()
    return np.array(d,dtype='float').transpose()
+   
+def clip_data(data, xlo=None, xup=None):
+   mask = np.zeros_like(data, dtype=bool)
+   if xlo is not None and xup is None:
+      mask[0] = (data[0]<xlo)
+   elif xlo is None and xup is not None:
+      mask[0] = (data[0]>xup)
+   elif xlo is not None and xup is not None:
+      mask[0] = (data[0]<xlo or data[0]>xup)
 
-fast = np.loadtxt('run_layers_fast.dat')
-nt = np.loadtxt('run_layers_nt.dat')
-pol2 = np.loadtxt('run_layers_pol2.dat')
-fast = fast.transpose()
-nt = nt.transpose()
-pol2 = pol2.transpose()
+   return ma.compress_cols(ma.array(data, mask=mask))
+   
+def main():
+   if len(sys.argv) < 4:
+      print "Usage: " + sys.argv[0] + " fast.dat nt.dat pol2.dat"
+      return 1
+      
+   plt.rc('font', family='serif')
 
-diff_nt_fast = diff(nt,fast,rel=True)
-diff_pol2_nt = diff(pol2,fast,rel=True)
 
-fig, (ax1, ax2) = plt.subplots(2,1)
+   fast = np.loadtxt(sys.argv[1],dtype='float32').transpose()
+   nt = np.loadtxt(sys.argv[2],dtype='float32').transpose()
+   pol2 = np.loadtxt(sys.argv[3],dtype='float32').transpose()
 
-#ax1.set_title('Angle resolution for different methods')
-ax1.plot(fast[0],fast[1],'-ok',label='Fast')
-ax1.plot(nt[0],nt[1],'-sr',label='NT')
-ax1.plot(pol2[0][:9],pol2[1][:9],'-^b',label='Pol2')
-ax1.set_xlim(0.,22.)
-ax1.set_ylim(0.,2.2)
-#ax1.semilogx()
-ax1.grid()
-ax1.set_xlabel('Number of layers')
-ax1.set_ylabel(r'$\sigma_t(\theta)$, mrad')
-ax1.legend()
-ax1.text(18.,1.8,'(a)')
+   nlmax = 30
+   
+   fast = clip_data(fast,xup=nlmax)
+   nt = clip_data(nt,xup=nlmax)
+   pol2 = clip_data(pol2,xup=nlmax)
+   ymax = max(fast[1].max(),nt[1].max(),pol2[1].max())
 
-#ax2.set_title('Relative difference between methods')
-ax2.plot(diff_nt_fast[0], 100.*diff_nt_fast[1], '-o', label='NT-Fast')
-ax2.plot(diff_pol2_nt[0], 100.*diff_pol2_nt[1], '-s', label='Pol2-Fast')
-ax2.grid()
-ax2.set_xlabel('Number of layers')
-ax2.set_ylabel(r'Relative difference in $\sigma_t(\theta)$, %')
-ax2.legend()
-ax2.text(8.,.55,'(b)')
+   diff_nt_fast = diff(nt,fast,rel=True)
+   diff_pol2_nt = diff(pol2,fast,rel=True)
 
-plt.tight_layout()
+   fig, (ax1, ax2) = plt.subplots(2,1)
 
-fig.savefig('sigtang_vs_layers_varopt.pdf')
-plt.show()
+   #ax1.set_title('Angle resolution for different methods')
+   ax1.plot(fast[0],fast[1],'-ok',label='Fast')
+
+   ax1.plot(nt[0],nt[1],'-sr',label='NT')
+
+   ax1.plot(pol2[0],pol2[1],'-^b',label='Pol2')
+
+   ax1.set_xlim(0.,nlmax*1.1)
+   ax1.set_ylim(0.,ymax*1.1)
+   #ax1.semilogx()
+   ax1.grid()
+   ax1.set_xlabel('Number of layers')
+   ax1.set_ylabel(r'$\sigma_t(\theta)$, mrad')
+   ax1.legend()
+   ax1.text(0,ymax*1.13,'(a)')
+
+   #ax2.set_title('Relative difference between methods')
+   ax2.plot(diff_nt_fast[0], 100.*diff_nt_fast[1], '-o', label='NT-Fast')
+   nd = (diff_pol2_nt[0]<=nlmax).sum()
+   ax2.plot(diff_pol2_nt[0,:nd], 100.*diff_pol2_nt[1,:nd], '-s', label='Pol2-Fast')
+   ax2.set_xlim(0.,nlmax*1.1)
+   ax2.grid()
+   ax2.set_xlabel('Number of layers')
+   ax2.set_ylabel(r'Relative difference in $\sigma_t(\theta)$, %')
+   ax2.legend()
+   ylo, yup = ax2.get_ylim()
+   ax2.text(0,yup+(yup-ylo)*0.06,'(b)')
+
+   plt.tight_layout()
+
+   fig.savefig('sigtang_vs_layers_varopt.pdf')
+   #plt.show()
+
+if __name__ == "__main__":
+   rc = main()
+   sys.exit(rc)
+
 
