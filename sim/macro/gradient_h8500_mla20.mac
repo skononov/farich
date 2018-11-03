@@ -1,0 +1,35 @@
+
+/Rich/pmt/qeDataFile hambs.dat
+/Rich/pmt/detection 0.87
+/Rich/pmt/geomEfficiency 0.89
+/Rich/pmt/pixelSize 0 mm
+
+/Rich/radiator/scatterLength 5 cm
+
+/Rich/mode manual
+/Rich/proximity 160 mm
+/Rich/radiator/reset
+
+/Rich/radiator/addLayer 1.03967 2 mm
+/Rich/radiator/addLayer 1.03902 2 mm
+/Rich/radiator/addLayer 1.03836 2 mm
+/Rich/radiator/addLayer 1.03771 2 mm
+/Rich/radiator/addLayer 1.03705 2 mm
+/Rich/radiator/addLayer 1.03639 2 mm
+/Rich/radiator/addLayer 1.03574 2 mm
+/Rich/radiator/addLayer 1.03508 2 mm
+/Rich/radiator/addLayer 1.03443 2 mm
+/Rich/radiator/addLayer 1.03377 2 mm
+/Rich/radiator/addLayer 1.03312 2 mm
+/Rich/radiator/addLayer 1.03246 2 mm
+/Rich/radiator/addLayer 1.03181 2 mm
+/Rich/radiator/addLayer 1.03115 2 mm
+/Rich/radiator/addLayer 1.03050 2 mm
+/Rich/radiator/addLayer 1.02984 2 mm
+/Rich/radiator/addLayer 1.02918 2 mm
+/Rich/radiator/addLayer 1.02853 2 mm
+/Rich/radiator/addLayer 1.02787 2 mm
+/Rich/radiator/addLayer 1.02722 2 mm
+
+/Rich/update
+

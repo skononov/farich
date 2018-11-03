@@ -1,0 +1,16 @@
+/Rich/radiator/reset
+/Rich/pmt/qeDataFile burle.dat
+/Rich/pmt/detection 0.7
+/Rich/pmt/geomEfficiency 0.7
+/Rich/pmt/pixelSize 6 mm
+
+/Rich/radiator/scatterLength 5 cm
+
+/Rich/mode manual
+# MLA-3 40mm focusing for K @ 4 GeV/c
+/Rich/radiator/addLayer 1.0700  12.4  mm
+/Rich/radiator/addLayer 1.0621  13.3  mm
+/Rich/radiator/addLayer 1.0551  14.3  mm
+
+/Rich/update
+

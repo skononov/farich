@@ -1,0 +1,13 @@
+/Rich/pmt/qeDataFile {qefile}
+/Rich/pmt/detection {detection}
+
+/Rich/radiator/scatterLength 5 cm
+/Rich/radiator/betaOp {betaOp}
+/Rich/radiator/index1 {index1}
+
+/Rich/mode fixed
+/Rich/dimension {dimension} mm
+/Rich/radiator/totalThickness {thickness} mm
+/Rich/radiator/nlayers {layers}
+/Rich/update
+

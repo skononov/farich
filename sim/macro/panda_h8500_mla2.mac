@@ -1,0 +1,15 @@
+/Rich/pmt/qeDataFile hambs.dat
+/Rich/pmt/detection 0.87
+/Rich/pmt/geomEfficiency 0.89
+/Rich/pmt/pixelSize 5.8 mm
+
+/Rich/radiator/scatterLength 5 cm
+/Rich/radiator/betaOp 1
+/Rich/radiator/index1 1.05
+
+/Rich/mode fixed
+/Rich/dimension 560 mm
+/Rich/radiator/totalThickness 45 mm
+/Rich/radiator/nlayers 2
+/Rich/update
+

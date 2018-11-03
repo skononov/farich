@@ -1,0 +1,7 @@
+/Rich/proximity {proximity} mm
+/Rich/update
+
+/analysis/outputFile {fprefix}_gap{proximity}.root
+
+/run/beamOn {events}
+

@@ -1,0 +1,9 @@
+/Rich/pmt/qeDataFile hamqz.dat
+/Rich/pmt/detection 0.5
+
+/Rich/mode manual
+/Rich/radiator/reset
+/Rich/radiator/addLayer NaF 20 mm
+/Rich/proximity 80 mm
+/Rich/update
+

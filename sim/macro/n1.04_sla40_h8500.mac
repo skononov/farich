@@ -1,0 +1,16 @@
+
+/Rich/pmt/qeDataFile hambs.dat
+/Rich/pmt/detection 0.87
+/Rich/pmt/geomEfficiency 0.89
+/Rich/pmt/pixelSize 0 mm
+
+/Rich/radiator/scatterLength 1000 m
+
+/Rich/mode manual
+/Rich/proximity 160 mm
+/Rich/radiator/reset
+
+/Rich/radiator/addLayer 1.04 40 mm
+
+/Rich/update
+

@@ -1,0 +1,16 @@
+/Rich/radiator/reset
+/Rich/pmt/qeDataFile burle.dat
+/Rich/pmt/detection 0.7
+/Rich/pmt/geomEfficiency 0.85
+/Rich/pmt/pixelSize 12 mm
+
+/Rich/radiator/scatterLength 5 cm
+
+/Rich/mode manual
+/Rich/proximity 145 mm
+/Rich/radiator/addLayer Water 20 mm
+/Rich/radiator/addLayer 1.0700  16.7  mm
+/Rich/radiator/addLayer 1.0583  18.3  mm
+
+/Rich/update
+

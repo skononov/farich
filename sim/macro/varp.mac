@@ -1,0 +1,27 @@
+#Verbosity
+/run/verbose 0
+/event/verbose 0
+/tracking/verbose 0
+/control/verbose 1
+
+#Analysis
+/analysis/verbose 1
+/analysis/interactive off
+/analysis/saveHitTree false
+/analysis/saveEventTree true
+
+#Particle
+/gun/particle {particle}
+/gun/totalMomentum {momentum} GeV
+/gun/angleTheta {dipangle} deg
+/gun/anglePhi {phiangle} deg
+
+#Detector description
+/control/execute {detector}
+
+#Define output root file
+/analysis/outputFile {output}
+
+#Run
+/run/beamOn {events}
+

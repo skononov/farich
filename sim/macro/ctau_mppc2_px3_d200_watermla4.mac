@@ -1,0 +1,17 @@
+/Rich/radiator/reset
+/Rich/pmt/qeDataFile mppc2.dat
+/Rich/pmt/detection 1
+/Rich/pmt/geomEfficiency 0.53
+/Rich/pmt/pixelSize 3 mm
+
+/Rich/radiator/scatterLength 5 cm
+
+/Rich/mode manual
+/Rich/proximity 145 mm
+/Rich/radiator/addLayer Water 20 mm
+/Rich/radiator/addLayer 1.0700 8.23 mm
+/Rich/radiator/addLayer 1.0655 8.56 mm
+/Rich/radiator/addLayer 1.0613 8.92 mm
+/Rich/radiator/addLayer 1.0574 9.29 mm
+
+/Rich/update

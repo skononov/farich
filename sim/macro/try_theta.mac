@@ -1,0 +1,7 @@
+/gun/anglePhi 0 deg
+/gun/angleTheta {theta} deg
+
+/analysis/outputFile {fprefix}_{theta}deg.root
+
+/run/beamOn {events}
+

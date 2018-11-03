@@ -1,0 +1,12 @@
+/Rich/radiator/reset
+/Rich/pmt/qeDataFile burle.dat
+/Rich/pmt/detection 0.7
+/Rich/pmt/geomEfficiency 0.7
+/Rich/pmt/pixelSize 6 mm
+
+/Rich/mode manual
+/Rich/proximity 170 mm
+/Rich/radiator/addLayer NaF 10 mm
+
+/Rich/update
+

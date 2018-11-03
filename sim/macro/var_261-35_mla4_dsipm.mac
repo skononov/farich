@@ -1,0 +1,27 @@
+#Verbosity
+/run/verbose 0
+/event/verbose 0
+/tracking/verbose 0
+
+#Analysis settings
+/analysis/verbose 1
+/analysis/interactive off
+/analysis/saveTree false
+
+#Particle
+/gun/particle pi-
+/gun/totalMomentum 6 GeV
+
+#Detector description
+/control/execute macro/dsipm_261-35_xrayscan.mac
+
+#Define aliases
+/control/alias fprefix runs/raw/pi6gev_dsipm_px4_261-35
+/control/alias events 5000
+
+#Sequence of runs
+#/control/foreach macro/try_d.mac proximity 150 160 170 180 190 200 210 220 230 240 250
+#/control/foreach macro/try_d.mac proximity 150 200
+/control/foreach macro/try_theta.mac theta 0 0.5 1 1.5 2 3 4 5
+
+

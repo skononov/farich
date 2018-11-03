@@ -1,0 +1,26 @@
+#Verbosity
+/run/verbose 0
+/event/verbose 0
+/tracking/verbose 0
+
+#Analysis settings
+/analysis/verbose 1
+/analysis/interactive off
+/analysis/saveHitTree false
+/analysis/saveEventTree true
+
+#Particle
+/gun/particle e+
+/gun/totalMomentum 6 GeV
+
+#Detector description
+/control/execute macro/dsipm_261-35_mla11_pmma5mm.mac
+
+#Define aliases
+/control/alias fprefix runs/raw/pi6gev_bg_dsipm_261-35_mla11_pmma5mm
+/control/alias events 10000
+
+#Sequence of runs
+/control/foreach macro/try_d.mac proximity 165 175 185 195 205 221
+
+

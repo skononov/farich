@@ -1,0 +1,13 @@
+/Rich/radiator/reset
+/Rich/pmt/qeDataFile cpta_gr.dat
+
+/Rich/radiator/scatterLength 5 cm
+
+/Rich/mode fixed
+/Rich/dimension 95 mm
+/Rich/radiator/nlayers 4
+/Rich/radiator/index1 1.0503
+/Rich/radiator/totalThickness 30 mm
+
+/Rich/update
+

@@ -1,0 +1,17 @@
+/Rich/pmt/qeDataFile burle.dat
+/Rich/pmt/detection 0.7
+/Rich/pmt/geomEfficiency 0.85
+/Rich/pmt/pixelSize 3.2 mm
+#/analysis/weighPixels true
+
+/Rich/radiator/scatterLength 5 cm
+/Rich/radiator/betaOp 0.9701
+
+/Rich/mode fixed
+/Rich/dimension 200 mm
+/Rich/radiator/index1 1.07
+/Rich/radiator/nlayers 4
+/Rich/radiator/totalThickness 45 mm
+/Rich/update
+
+

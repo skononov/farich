@@ -1,0 +1,12 @@
+#Detector description
+/Rich/pmt/qeDataFile hamqz.dat
+/Rich/pmt/detection 0.5
+
+/Rich/mode manual
+/Rich/radiator/reset
+/Rich/radiator/addLayer NaF 10 mm
+/Rich/radiator/addLayer 1.0 10 mm
+/Rich/radiator/addLayer NaF 10 mm
+/Rich/proximity 70 mm
+/Rich/update
+

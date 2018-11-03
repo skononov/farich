@@ -1,0 +1,25 @@
+# Invoke the OGLIX driver
+#/vis/open DAWNFILE
+#/vis/open HepRepFile
+/vis/open OGLIXm
+
+# Set direction from target to camera.
+#/vis/viewer/set/viewpointThetaPhi -110 -30 deg
+#/vis/viewer/set/projection p 20 deg
+/vis/viewer/set/viewpointThetaPhi -90 0 deg
+/vis/viewer/set/lightsVector 0 1 -.5
+/vis/viewer/set/projection o
+/vis/viewer/zoom 4
+
+
+# Create an empty scene and add the detector geometry to it
+/vis/drawVolume
+
+# for drawing the tracks
+# (if too many tracks cause core dump => storeTrajectory 0)
+/tracking/storeTrajectory 1
+
+/event/forceDrawPhotons false
+
+/vis/scene/endOfEventAction refresh
+

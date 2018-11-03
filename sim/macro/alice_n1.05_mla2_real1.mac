@@ -1,0 +1,11 @@
+/Rich/radiator/reset
+/Rich/pmt/qeDataFile mrs_apd.dat
+/Rich/pmt/pixelSize 1 mm
+
+/Rich/radiator/scatterLength 4 cm
+
+/Rich/mode manual
+/Rich/proximity 470 mm
+/Rich/radiator/addLayer 1.0470 15 mm
+/Rich/radiator/addLayer	1.0453 16 mm
+/Rich/update

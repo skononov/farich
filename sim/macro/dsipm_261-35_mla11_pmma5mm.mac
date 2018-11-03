@@ -1,0 +1,25 @@
+/Rich/radiator/reset
+/Rich/pmt/qeDataFile dsipm_3200_22.dat
+/Rich/pmt/detection 1.0
+/Rich/pmt/geomEfficiency 0.69
+#/Rich/pmt/pixelSize 3.5 mm
+/Rich/pmt/pixelSize 0 mm
+
+/Rich/radiator/scatterLength 4.3 cm
+
+/Rich/mode manual
+/Rich/proximity 195 mm
+/Rich/radiator/addLayer PMMA    5 mm
+/Rich/radiator/addLayer 1.04659	5.34 mm
+/Rich/radiator/addLayer 1.04508	3.08 mm
+/Rich/radiator/addLayer 1.05603	0.43 mm
+/Rich/radiator/addLayer 1.04346	4.30 mm
+/Rich/radiator/addLayer 1.04175	4.06 mm
+/Rich/radiator/addLayer 1.04859	0.50 mm
+/Rich/radiator/addLayer 1.03863	4.58 mm
+/Rich/radiator/addLayer 1.03871	4.30 mm
+/Rich/radiator/addLayer 1.04622	0.47 mm
+/Rich/radiator/addLayer 1.03708	6.01 mm
+/Rich/radiator/addLayer 1.03789	4.43 mm
+/Rich/update
+

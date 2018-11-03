@@ -1,0 +1,32 @@
+#Verbosity
+/run/verbose 0
+/control/verbose 2
+
+/event/verbose 0
+/tracking/verbose 0
+
+/analysis/verbose 0
+/analysis/interactive off
+
+#Particle
+/gun/particle pi-
+/gun/totalMomentum {momentum} GeV
+
+#Detector description
+/Rich/pmt/qeDataFile hambs.dat
+/Rich/pmt/detection 0.5
+
+/Rich/mode number
+/Rich/radiator/nlayers 1
+/Rich/radiator/index1 {index}
+/Rich/radiator/scatterLength {scatlength} mm
+/Rich/radiator/thickness1 {thickness} mm
+/Rich/proximity {distance} mm
+/Rich/update
+
+#Define output root file
+/analysis/outputFile {output}
+
+#Run
+/run/beamOn {events}
+

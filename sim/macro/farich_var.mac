@@ -1,0 +1,38 @@
+#Verbosity
+/run/verbose 0
+/control/verbose 2
+
+/event/verbose 0
+/tracking/verbose 0
+
+/analysis/verbose 1
+/analysis/interactive off
+
+#Particle
+/gun/particle {particle}
+/gun/totalMomentum {momentum} GeV
+/gun/angleTheta {dipangle} deg
+/gun/anglePhi 0
+
+#Detector description
+/Rich/pmt/qeDataFile {qefile}
+/Rich/pmt/detection {detection}
+/Rich/pmt/geomEfficiency {geomeff}
+/Rich/pmt/pixelSize {pixel} mm
+
+/Rich/radiator/scatterLength {lsc} mm
+/Rich/radiator/betaOp {betaOp}
+/Rich/radiator/index1 {index1}
+
+/Rich/mode fixed
+/Rich/dimension {dimension} mm
+/Rich/radiator/totalThickness {thickness} mm
+/Rich/radiator/nlayers {layers}
+/Rich/update
+
+#Define output root file
+/analysis/outputFile {output}
+
+#Run
+/run/beamOn {events}
+

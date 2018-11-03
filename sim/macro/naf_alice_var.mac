@@ -1,0 +1,30 @@
+#Verbosity
+/run/verbose 0
+/control/verbose 2
+
+/event/verbose 0
+/tracking/verbose 0
+
+/analysis/verbose 1
+/analysis/interactive off
+
+#Particle
+/gun/particle {particle}
+/gun/totalMomentum {momentum} GeV
+
+#Detector description
+/Rich/pmt/qeDataFile {qefile}
+/Rich/pmt/detection 1
+
+/Rich/mode manual
+/Rich/radiator/reset
+/Rich/radiator/addLayer NaF {thickness} mm
+/Rich/proximity {distance} mm
+/Rich/update
+
+#Define output root file
+/analysis/outputFile {output}
+
+#Run
+/run/beamOn {events}
+

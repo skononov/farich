@@ -1,0 +1,24 @@
+#Verbosity
+/run/verbose 0
+/event/verbose 0
+/tracking/verbose 0
+
+#Analysis settings
+/analysis/verbose 1
+/analysis/interactive off
+/analysis/saveTree false
+
+#Particle
+/gun/particle e-
+/gun/totalMomentum 1 GeV
+
+#Detector description
+/control/execute macro/proto_xrayscan_2.mac
+
+#Define aliases
+/control/alias fprefix runs/raw/proto_xrayscan_2
+/control/alias events 1000
+
+#Sequence of runs
+/control/foreach macro/try_d.mac proximity 55 60 65 70 75 80
+

@@ -1,0 +1,13 @@
+/Rich/pmt/qeDataFile mrs_apd.dat
+/Rich/pmt/detection 1
+
+/Rich/radiator/scatterLength 5 cm
+/Rich/radiator/betaOp 1
+/Rich/radiator/index1 1.05
+
+/Rich/mode fixed
+/Rich/dimension 500 mm
+/Rich/radiator/totalThickness 50 mm
+/Rich/radiator/nlayers 3
+/Rich/update
+

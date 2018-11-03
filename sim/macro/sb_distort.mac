@@ -1,0 +1,42 @@
+#Verbosity
+/run/verbose 0
+/control/verbose 2
+
+/event/verbose 0
+/tracking/verbose 0
+
+/analysis/verbose 1
+/analysis/interactive off
+/analysis/saveTree false
+
+/Rich/verbose 1
+
+#Particle
+/gun/particle pi-
+/gun/totalMomentum 0.56 GeV
+
+#Detector configuration
+/control/execute macro/sb_cpta_px2.1_d130_n1.07_mla4.mac
+
+/control/alias fprefix pi0.56gev_cpta_px2.1_d130_n1.07_mla4
+/control/alias events 5000
+
+#/analysis/outputFile runs/superb/distort/{fprefix}_nodistorion.root
+#/run/beamOn {events}
+
+#/Rich/radiator/evenDistortion true
+
+#/control/alias fprefix runs/superb/distort/pi0.56gev_cpta_px2.1_d130_n1.07_mla4_distort_t
+#/control/foreach macro/try_distort_t.mac eps -0.5 -0.2 -0.15 -0.1 -0.05 0.05 0.1 0.15 0.2 0.5
+
+#/control/alias fprefix runs/superb/distort/pi0.56gev_cpta_px2.1_d130_n1.07_mla4_distort_n
+#/control/foreach macro/try_distort_n.mac eps -0.5 -0.2 -0.1 -0.05 -0.02 -0.01 0.01 0.02 0.05 0.1 0.2 0.5
+
+/Rich/radiator/evenDistortion false
+
+#/control/alias fprefix runs/superb/distort/pi0.56gev_cpta_px2.1_d130_n1.07_mla4_distort_odd_t
+#/control/foreach macro/try_distort_t.mac eps -0.5 -0.2 -0.15 -0.1 -0.05 0.05 0.1 0.15 0.2 0.5
+
+/control/alias fprefix runs/superb/distort/pi0.56gev_cpta_px2.1_d130_n1.07_mla4_distort_odd_n
+/control/foreach macro/try_distort_n.mac eps -0.1 -0.05 -0.02 -0.01 0.01 0.02 0.05 0.1
+

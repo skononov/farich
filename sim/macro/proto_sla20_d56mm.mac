@@ -1,0 +1,12 @@
+/Rich/radiator/reset
+/Rich/pmt/qeDataFile cpta_gr.dat
+/Rich/pmt/pixelSize 2.1 mm
+
+/Rich/radiator/scatterLength 4.5 cm
+
+/Rich/mode manual
+/Rich/proximity 56 mm
+/Rich/radiator/addLayer 1.055  20 mm
+
+/Rich/update
+

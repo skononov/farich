@@ -1,0 +1,19 @@
+/Rich/pmt/qeDataFile cpta_gr.dat
+/Rich/pmt/detection 1
+/Rich/pmt/geomEfficiency 0.49
+/Rich/pmt/pixelSize 2.1 mm
+
+/Rich/radiator/scatterLength 5 cm
+/Rich/radiator/betaOp 0.9701
+
+/Rich/mode fixed
+/Rich/dimension 125 mm
+/Rich/radiator/index1 1.07
+/Rich/radiator/nlayers 4
+/Rich/radiator/totalThickness 30 mm
+/Rich/update
+
+/Rich/mode manual
+/Rich/radiator/addLayer Quartz 5 mm
+/Rich/update
+

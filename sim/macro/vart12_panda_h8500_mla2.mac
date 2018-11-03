@@ -1,0 +1,70 @@
+/run/verbose 0
+/event/verbose 0
+/tracking/verbose 0
+/analysis/verbose 1
+/analysis/interactive off
+/analysis/saveHitTree false
+/analysis/saveEventTree false
+
+/Rich/pmt/qeDataFile hambs.dat
+/Rich/pmt/detection 0.87
+/Rich/pmt/geomEfficiency 0.89
+/Rich/pmt/pixelSize 5.8 mm
+
+/Rich/radiator/scatterLength 5 cm
+/Rich/radiator/betaOp 1
+/Rich/radiator/index1 1.05
+
+/Rich/mode manual
+/Rich/proximity 510 mm
+
+/Rich/radiator/reset
+/Rich/radiator/addLayer 1.0500 24 mm
+/Rich/radiator/addLayer 1.0462 26 mm
+/Rich/update
+/analysis/outputFile panda_h8500_mla2_d560_t24-26.root
+/run/beamOn 1000
+
+/Rich/radiator/reset
+/Rich/radiator/addLayer 1.0500 25 mm
+/Rich/radiator/addLayer 1.0462 25 mm
+/Rich/update
+/analysis/outputFile panda_h8500_mla2_d560_t25-25.root
+/run/beamOn 1000
+
+/Rich/radiator/reset
+/Rich/radiator/addLayer 1.0500 26 mm
+/Rich/radiator/addLayer 1.0462 24 mm
+/Rich/update
+/analysis/outputFile panda_h8500_mla2_d560_t26-24.root
+/run/beamOn 1000
+
+/Rich/radiator/reset
+/Rich/radiator/addLayer 1.0500 27 mm
+/Rich/radiator/addLayer 1.0462 23 mm
+/Rich/update
+/analysis/outputFile panda_h8500_mla2_d560_t27-23.root
+/run/beamOn 1000
+
+/Rich/radiator/reset
+/Rich/radiator/addLayer 1.0500 28 mm
+/Rich/radiator/addLayer 1.0462 22 mm
+/Rich/update
+/analysis/outputFile panda_h8500_mla2_d560_t28-22.root
+/run/beamOn 1000
+
+/Rich/radiator/reset
+/Rich/radiator/addLayer 1.0500 29 mm
+/Rich/radiator/addLayer 1.0462 21 mm
+/Rich/update
+/analysis/outputFile panda_h8500_mla2_d560_t29-21.root
+/run/beamOn 1000
+
+/Rich/radiator/reset
+/Rich/radiator/addLayer 1.0500 30 mm
+/Rich/radiator/addLayer 1.0462 20 mm
+/Rich/update
+/analysis/outputFile panda_h8500_mla2_d560_t30-20.root
+/run/beamOn 1000
+
+

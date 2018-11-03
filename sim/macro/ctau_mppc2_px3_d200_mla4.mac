@@ -1,0 +1,14 @@
+/Rich/pmt/qeDataFile mppc2.dat
+/Rich/pmt/detection 1
+/Rich/pmt/geomEfficiency 0.53
+/Rich/pmt/pixelSize 3 mm
+
+/Rich/radiator/scatterLength 5 cm
+/Rich/radiator/betaOp 0.9904 #pi @ 1 GeV/c
+/Rich/radiator/index1 1.07
+
+/Rich/mode fixed
+/Rich/dimension 200 mm
+/Rich/radiator/totalThickness 35 mm
+/Rich/radiator/nlayers 4
+/Rich/update

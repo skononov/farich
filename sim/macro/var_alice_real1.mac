@@ -1,0 +1,24 @@
+#Verbosity
+/run/verbose 0
+/event/verbose 0
+/tracking/verbose 0
+
+#Analysis settings
+/analysis/verbose 1
+/analysis/interactive off
+/analysis/saveTree false
+
+#Particle
+/gun/particle pi-
+/gun/totalMomentum 6 GeV
+
+#Detector description
+/control/execute macro/alice_n1.05_mla2_real1.mac
+
+#Define aliases
+/control/alias fprefix runs/raw/pi6gev_alice_mla2_real1
+/control/alias events 5000
+
+#Sequence of runs
+/control/foreach macro/try_d.mac proximity 425 450 475 500 525 550
+

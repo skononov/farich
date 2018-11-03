@@ -1,0 +1,180 @@
+////////////////////////////////////////////////////////////////////////
+// Cerenkov Radiation Class Definition
+////////////////////////////////////////////////////////////////////////
+//
+// File:        RichCerenkov.hh
+// Description: Continuous Process -- Generation of Cerenkov Photons
+// Modified by S.Kononov basing on the version 2.0
+////////////////////////////////////////////////////////////////////////
+
+#ifndef RichCerenkov_h
+# define RichCerenkov_h 1
+
+/////////////
+// Includes
+/////////////
+
+# include "G4VContinuousProcess.hh"
+# include "G4Track.hh"
+# include "G4Step.hh"
+# include "G4DynamicParticle.hh"
+# include "G4PhysicsTable.hh"
+
+class G4VParticleChange;
+class G4DynamicParticle;
+class G4Material;
+class G4MaterialPropertyVector;
+
+// Class Description:
+// Continuous Process -- Generation of Cerenkov Photons.
+// Class inherits publicly from G4VContinuousProcess.
+// Class Description - End:
+
+/////////////////////
+// Class Definition
+/////////////////////
+
+class RichCerenkov : public G4VContinuousProcess {
+  public:						// Without description
+
+	////////////////////////////////
+	// Constructors and Destructor
+	////////////////////////////////
+
+	RichCerenkov(const G4String & processName = "Cerenkov", G4ProcessType type=fElectromagnetic);
+
+	 ~RichCerenkov();
+
+	////////////
+	// Methods
+	////////////
+
+  public:						// With description
+
+	G4bool IsApplicable(const G4ParticleDefinition & aParticleType);
+	// Returns true -> 'is applicable', for all charged particles.
+
+	G4double GetContinuousStepLimit(const G4Track & aTrack,
+									G4double, G4double, G4double &);
+	// Returns the continuous step limit defined by the Cerenkov
+	// process.
+
+	G4VParticleChange *AlongStepDoIt(const G4Track & aTrack,
+									 const G4Step & aStep);
+	// This is the method implementing the Cerenkov process.
+
+	void SetTrackSecondariesFirst(const G4bool state);
+	// If set, the primary particle tracking is interrupted and any
+	// produced Cerenkov photons are tracked next. When all have
+	// been tracked, the tracking of the primary resumes.
+
+	void SetMaxNumPhotonsPerStep(const G4int NumPhotons);
+	// Set the maximum number of Cerenkov photons allowed to be
+	// generated during a tracking step. This is an average ONLY;
+	// the actual number will vary around this average. If invoked,
+	// the maximum photon stack will roughly be of the size set.
+	// If not called, the step is not limited by the number of
+	// photons generated.
+
+	void RebuildPhysicsTable();
+	// Rebuild physics table if material table has been changed
+
+	void BuildPhysicsTable(const G4ParticleDefinition&);
+	void ResetPhysicsTable();
+
+	G4PhysicsTable *GetPhysicsTable() const;
+	// Returns the address of the physics table.
+
+	void DumpPhysicsTable() const;
+	// Prints the physics table.
+
+private:
+
+	void BuildThePhysicsTable();
+
+	/////////////////////
+	// Helper Functions
+	/////////////////////
+
+	G4double GetAverageNumberOfPhotons(const G4DynamicParticle * aParticle,
+									   const G4Material * aMaterial,
+									   const G4MaterialPropertyVector *
+									   Rindex) const;
+
+	///////////////////////
+	// Class Data Members
+	///////////////////////
+
+  protected:
+
+	  G4PhysicsTable * thePhysicsTable;
+	//  A Physics Table can be either a cross-sections table or
+	//  an energy table (or can be used for other specific
+	//  purposes).
+
+  private:
+
+	G4bool fTrackSecondariesFirst;
+	G4int fMaxPhotons;
+};
+
+////////////////////
+// Inline methods
+////////////////////
+
+inline
+	G4bool RichCerenkov::IsApplicable(const G4ParticleDefinition & aParticleType)
+{
+	if (aParticleType.GetParticleName() != "chargedgeantino")
+		return (aParticleType.GetPDGCharge() != 0);
+
+	return false;
+}
+
+inline void RichCerenkov::SetTrackSecondariesFirst(const G4bool state)
+{
+	fTrackSecondariesFirst = state;
+}
+
+inline void RichCerenkov::SetMaxNumPhotonsPerStep(const G4int NumPhotons)
+{
+	fMaxPhotons = NumPhotons;
+}
+
+inline void RichCerenkov::DumpPhysicsTable() const
+{
+	G4int PhysicsTableSize = thePhysicsTable->entries();
+	G4PhysicsOrderedFreeVector *v;
+
+	for (G4int i = 0; i < PhysicsTableSize; i++) {
+		v = (G4PhysicsOrderedFreeVector *) (*thePhysicsTable)[i];
+		v->DumpValues();
+	}
+}
+
+inline G4PhysicsTable *RichCerenkov::GetPhysicsTable() const
+{
+	return thePhysicsTable;
+}
+
+inline void RichCerenkov::RebuildPhysicsTable()
+{
+	if(thePhysicsTable) delete thePhysicsTable;
+	thePhysicsTable = NULL;
+	BuildThePhysicsTable();
+}
+
+inline void RichCerenkov::BuildPhysicsTable(const G4ParticleDefinition&)
+{
+	if (thePhysicsTable==0 && verboseLevel>0)
+		G4cout << "Build the physics table for the Cerenkov process." << G4endl;
+	BuildThePhysicsTable();
+}
+
+inline void RichCerenkov::ResetPhysicsTable()
+{
+	if(thePhysicsTable) delete thePhysicsTable;
+	thePhysicsTable = NULL;
+}
+
+#endif /* RichCerenkov_h */
