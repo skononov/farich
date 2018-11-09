@@ -3,12 +3,12 @@
 #include <fstream>
 #include <cstdlib>
 #include <cmath>
-#include <unistd.h>
-#include <libgen.h>
+//#include <unistd.h>
 #include <string>
 #include <algorithm>
 #include <set>
 
+#include "TSystem.h"
 #include "TTree.h"
 #include "TRint.h"
 #include "TFile.h"
@@ -20,7 +20,7 @@
 
 using namespace std;
 
-static const char *optstring = "qn:s:N:D:T:p:b:B:e:o:O:m::";
+static const char *optstring = "qn:s:N:D:T:p:b:B:e:o:O:i:m::";
 static const char *progname;
 
 //Параметры программы
@@ -39,6 +39,7 @@ static bool minimize = false;
 static bool polpar = false;
 static int npol = 2;
 static bool samethick = false;
+static string infn;
 static string outfn = "farichres.root";
 static string macfn;
 
@@ -89,6 +90,34 @@ static bool parse_param(string p)
     return false;
 }
 
+static bool read_radiator_file(string fn,vector<pair<float,float>>& data)
+{
+    ifstream in(fn);
+    if (in.fail()) return false;    
+    
+    float t, n;
+    int line = 0; 
+    while (1) {
+        in >> t >> n;
+        if (in.fail()) break;
+        line++;
+        if (t < 0) {
+            cerr << fn << ": отрицательное значение толщины (" << t << ") в строке " << line << endl;
+            return false;
+        }
+        if (n < 1.0) {
+            cerr << fn << ": значение показателя (" << n << ") меньше 1.0 в строке " << line << endl;
+            return false;
+        }
+        cout << t << " " << n << endl;
+        data.push_back({t,n});        
+    }
+
+    in.close();
+        
+    return true;
+}
+
 static void Usage(int status)
 {
     cout
@@ -98,23 +127,25 @@ static void Usage(int status)
         << "эффективности фотонного детектора, представленых в двух колонках: длина волны (нм), эффективность (\%).\n\n"
         << " OPTIONS:\n"
         << "   -q                Задачный режим без графики и интерпретатора\n"
-        << "   -e eff            Фактор к эффективности фотонного детектора, 0<eff<=1 (default: " << efficiency << ")\n"
-        << "   -p size           Размер квадратного пикселя фотонного детектора, мм (default: " << pixelsize << ")\n"
-        << "   -D distance       Расстояние от начала радиатора до фотонного детектора, мм (default: " << D << ")\n"
-        << "   -n ri1            Максимальный показатель преломления радиатора на 400 нм (default: " << ri1 << ")\n"
-        << "   -N nlayers        Число слоев аэрогеля, 0<nlayers<=100 (default: " << nlayers << ")\n"
-        << "   -T thickness      Толщина радиатора, мм (default: " << T << ")\n"
-        << "   -s Lsc            Длина рассеяния на 400 нм, мм (default: " << Lsc << ")\n"
-        << "   -b beta           Оптимизировать радиатор для данной скорости частицы, 1/ri1<beta<=1 (default: "
-        << opbeta << ")\n"
-        << "   -B beta           Сделать расчет для данной скорости частицы, 1/ri1<beta<=1 (default: скорость частицы "
-           "для оптимизации)\n"
+        << "   -e eff            Фактор к эффективности фотонного детектора, 0<eff<=1 (по умолчанию: " << efficiency << ")\n"
+        << "   -p size           Размер квадратного пикселя фотонного детектора, мм (по умолчанию: " << pixelsize << ")\n"
+        << "   -D distance       Расстояние от начала радиатора до фотонного детектора, мм (по умолчанию: " << D << ")\n"
+        << "   -n ri1            Максимальный показатель преломления радиатора на 400 нм (по умолчанию: " << ri1 << ")\n"
+        << "   -i filename       Прочитать описание радиатора из текстового файла filename с колонками:\n"
+           "                       толщина слоя (мм), показатель преломления на 400 нм,\n"
+           "                       начиная с первого слоя (по умолчанию: оптимизированный радиатор)\n"
+        << "   -N nlayers        Число слоев аэрогеля, 0<nlayers<=100 (по умолчанию: " << nlayers << ")\n"
+        << "   -T thickness      Толщина радиатора, мм (по умолчанию: " << T << ")\n"
+        << "   -s Lsc            Длина рассеяния на 400 нм, мм (по умолчанию: " << Lsc << ")\n"
+        << "   -b beta           Оптимизировать радиатор для данной скорости частицы, 1/ri1<beta<=1 (по умолчанию: " << opbeta << ")\n"
+        << "   -B beta           Сделать расчет для данной скорости частицы, 1/ri1<beta<=1 (по умолчанию: скорость частицы "
+           "                       для оптимизации)\n"
         << "   -m[param]         Оптимизировать радиатор по угловой ошибке на трек, используя параметризацию param:\n"
-        << "                       nt, pol<k>[s] (k=1..10, s - одинаковая толщина слоев) (default: nt)\n"
-        << "   -o filename       Сохранить гистограмму распределения по радиусу в заданный ROOT-файл (default: "
-        << outfn << ")\n"
-        << "   -O filename       Сохранить описание детектора в заданный командный файл Geant4. По умолчанию - не "
-           "сохранять.\n"
+           "                       nt, pol<k>[s] (k=1..10, s - одинаковая толщина слоев) (по умолчанию: nt)\n"
+        << "   -o filename       Сохранить гистограмму распределения по радиусу в заданный ROOT-файл filename\n"
+           "                       (по умолчанию: " << outfn << ")\n"
+        << "   -O filename       Сохранить описание детектора в командный файл Geant4 filename.\n"
+           "                       (по умолчанию: не cохранять).\n"
         << endl;
     exit(status);
 }
@@ -142,6 +173,12 @@ int main(int argc, char *argv[])
                 return 1;
             }
             ri1 = n;
+        } else if (opt == 'i') {
+            infn = optarg;
+            if (gSystem->AccessPathName(infn.c_str())) { // файл не обнаружен
+                cerr << infn << ": нет такого файла" << endl;
+                return 1;
+            }
         } else if (opt == 's') {
             float l = atof(optarg);
             if (l <= 0) {
@@ -215,6 +252,9 @@ int main(int argc, char *argv[])
             Usage(1);
         }
     }
+    //=========Проверка значений параметров программы==========//
+    if (optind >= argc)
+        Usage(1);
     if (T >= D) {
         cerr << "T=" << T << ", D=" << D << ": толщина радиатора больше расстояния до фотонного детектора" << endl;
         return 1;
@@ -232,29 +272,36 @@ int main(int argc, char *argv[])
         return 1;
     }
     if (minimize && nlayers == 1) {
-        cerr << "Оптимизация однослойного радиатора невозможна" << endl;
+        cerr << "Предупреждение: оптимизация однослойного радиатора невозможна" << endl;
         minimize = false;
     }
     
-    if (optind >= argc)
-        Usage(1);
-
     qefn = argv[optind];
+    if (gSystem->AccessPathName(qefn.c_str())) { // файл не обнаружен
+        cerr << qefn << ": нет такого файла" << endl;
+        return 1;
+    }
+    
 
     //==========Расчет========//
     cout << "________________________________________________\n"
          << "Вычисление разрешения черенковского детектора.\n"
          << "Параметры:\n"
-         << "  файл с квантовой эффективностью:\n   " << qefn << "\n"
+         << "  файл с квантовой эффективностью:              " << qefn << "\n"
          << "  фактор эффективности ФЭУ:                     " << efficiency << "\n"
          << "  размер пикселя ФЭУ:                           " << pixelsize << " мм\n"
-         << "  расстояние от радиатора до ФЭУ:               " << D << " мм\n"
-         << "  показатель преломления первого слоя на 400нм: " << ri1 << "\n"
-         << "  число слоев радиатора:                        " << nlayers << "\n"
-         << "  полная толщина радиатора:                     " << T << " мм\n"
-         << "  длина рассеяния в аэрогеле на 400 нм:         " << Lsc << " мм\n"
+         << "  расстояние от радиатора до ФЭУ:               " << D << " мм\n";
+    if (infn.empty()) {
+        cout << "  показатель преломления первого слоя на 400нм: " << ri1 << "\n"
+             << "  число слоев радиатора:                        " << nlayers << "\n"
+             << "  полная толщина радиатора:                     " << T << " мм\n";
+    } else {
+        cout << "  файл описания радиатора:                      " << infn << "\n";
+    }
+    cout << "  длина рассеяния в аэрогеле на 400 нм:         " << Lsc << " мм\n"
          << "  оптимизация для скорости:                     " << opbeta << "\n"
          << "  расчет для скорости:                          " << beta << "\n";
+
     if (minimize) {
         if (polpar) {
             cout << "  Pol" << npol << "-оптимизация радиатора";
@@ -262,8 +309,9 @@ int main(int argc, char *argv[])
                 cout << " с одинаковыми толщинами слоев\n";
             else
                 cout << " с толщинами слоев из быстрой оптимизации\n";
-        } else
+        } else {
             cout << "  NT-оптимизация радиатора\n";
+        }
     } else {
         cout << "  только быстрая оптимизация радиатора\n";
     }
@@ -283,7 +331,7 @@ int main(int argc, char *argv[])
     Spectrum phdeteff(qefn.c_str());
     if (phdeteff.IsEmpty())
         return 1;
-
+    
     if (efficiency < 1.0)
         phdeteff.Scale(efficiency);
 
@@ -293,22 +341,40 @@ int main(int argc, char *argv[])
     cout.precision(3);
     cout << "Квантовая эффективность определена от " << wl1 << " до " << wl2 << " нм, всего " << phdeteff.Size()
          << " значений." << endl;
+    cout.precision(6);
 
-    //Создаем многослойный аэрогелевый радиатор по идеальной модели без дисперсии для
-    //длины волны максимальной чувствительности
-    double t0 = D - T; // proximity distance
+    double t0 = D-T; // proximity distance. may be not correct at this stage
     MLADescription mla(t0, opbeta);
     mla.SetScatteringLength(Lsc);
     mla.SetPDefficiency(phdeteff);
     mla.SetPixelSize(pixelsize);
 
-    mla.MakeFixed(nlayers, D, ri1);
+    if (!infn.empty()) {
+        vector<pair<float,float>> radiator;
+        if (!read_radiator_file(infn, radiator))
+            return 2;
 
-    double wl0 = mla.GetMaxSensitivityWL(T);
-    cout << "Длина волны максимальной чувствительности к ЧИ: " << wl0 << " нм" << endl;
-    mla.SetWavelength(wl0);
+        for(auto entry : radiator)
+            mla.AddAlayer(entry.second,entry.first);
 
-    cout << "Исходный аэрогелевый радиатор:" << endl;
+        T = mla.GetTotalThickness();
+        t0 = D - T;
+        if (t0 < 0.) {
+            cerr << "Толщина радиатора T=" << T << " мм превышает расстояние между фотодетектором и аэрогелем D=" << D << " мм" << endl;
+            return 2;
+        }
+        mla.SetProximityDistance(t0);
+        nlayers = mla.GetNlayers();
+        cout << "Заданный радиатор:" << endl;
+    } else {
+        double wl0 = mla.GetMaxSensitivityWL(T);
+        cout << "Длина волны максимальной чувствительности к ЧИ: " << wl0 << " нм" << endl;
+        mla.SetWavelength(wl0);
+
+        mla.MakeFixed(nlayers, D, ri1);
+        cout << "Радиатор после быстрой оптимизации:" << endl;
+    }
+
     mla.Print("  ");
 
     struct MLADescription::Resolution res = mla.Calculate(beta, true);
