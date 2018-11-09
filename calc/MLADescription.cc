@@ -378,7 +378,7 @@ double MLADescription::GetMaxSensitivityWL(double T) const
 
     for (int i = 0; i < Nwl; i++) {
         double wl = wl1 + (i + 0.5) * wlstep;
-        double rn = AerogelRefIndex(vn[0], 400., wl) * beta;
+        double rn = AerogelRefIndex(1.05, 400., wl) * beta;
         if (rn <= 1.0)
             continue;
         double attFactor = 1.;
