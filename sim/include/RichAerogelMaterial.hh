@@ -5,19 +5,23 @@
 # include <vector>
 # include <unordered_map>
 # include "globals.hh"
-
+# include "G4MaterialPropertyVector.hh"
 # include "RichParameters.hh"
 
 class G4Material;
-class G4MaterialPropertyVector;
 
-namespace std {
-    // Define injected hash object function for 
-    //  mapping refractive index to aerogel materials 
-    template<> struct hash<G4double> {
-	    size_t operator()(G4double x) const { return (size_t)rint(1e4*fabs(x)); }
-    };
-} // namespace std
+// Define injected hash object function for 
+//  mapping refractive index to aerogel materials 
+struct RichHashRI {
+    size_t operator()(G4double x) const { return (size_t)rint(1e5*fabs(x)); }
+};
+
+struct RichEqualRI {
+    constexpr bool operator()(const G4double &lhs, const G4double &rhs) const 
+    {
+        return rint(1e5*fabs(lhs)) == rint(1e5*fabs(rhs));
+    }
+};
 
 class RichAerogelMaterial {
 public:
@@ -50,7 +54,7 @@ private:
 	G4MaterialPropertyVector* rayleighData;
 	G4bool initialized;
 
-	typedef unordered_map< G4double, G4Material* > mat_ri_map;
+	typedef std::unordered_map< G4double, G4Material*, RichHashRI, RichEqualRI> mat_ri_map;
 	mat_ri_map aerogels;
 };
 

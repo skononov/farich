@@ -5,7 +5,8 @@
 # include <cmath> //for NAN value
 
 class RichSpectrumIter;
-class G4MaterialPropertyVector;
+class G4PhysicsOrderedFreeVector;
+typedef G4PhysicsOrderedFreeVector G4MaterialPropertyVector;
 
 class RichSpectrum
 {

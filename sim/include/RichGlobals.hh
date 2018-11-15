@@ -3,9 +3,10 @@
 
 # include "globals.hh"
 # include "CLHEP/Units/SystemOfUnits.h"
+# include "CLHEP/Units/PhysicalConstants.h"
 
 // Conversion factor from photon wavelength in nanometers to photon energy in eV
-static const G4double kPhotMomWaveConv=h_Planck*c_light/CLHEP::eV/CLHEP::nm;
+static const G4double kPhotMomWaveConv=CLHEP::h_Planck*CLHEP::c_light/CLHEP::eV/CLHEP::nm;
 //Tolerance for comparison of double values
 static const G4double kTolerance = 2.2e-14;
 

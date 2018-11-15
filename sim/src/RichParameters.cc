@@ -4,7 +4,7 @@ using namespace std;
 
 vector<G4double> defPhotMomVector = InitializePhotonMomentumVector();
 
-G4double (*AerogelRefIndex)(G4double, G4double, G4bool getRef=false) = AerogelRefIndexQuartz;
+G4double (*AerogelRefIndex)(G4double, G4double, G4bool) = AerogelRefIndexQuartz;
 
 vector<G4double> InitializePhotonMomentumVector() {
 	G4double PhotonEnergyStep=(kPhotonMaxEnergy-kPhotonMinEnergy)/kNPhotWLbins;

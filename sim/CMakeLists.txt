@@ -44,6 +44,9 @@ file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.hh)
 add_executable(aRichSim aRichSim.cc ${sources} ${headers})
 target_link_libraries(aRichSim ${Geant4_LIBRARIES})
 
+add_executable(test test.cc)
+target_link_libraries(aRichSim ${Geant4_LIBRARIES})
+
 #----------------------------------------------------------------------------
 # Install the executable to 'bin' directory under CMAKE_INSTALL_PREFIX
 #

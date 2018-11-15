@@ -14,7 +14,7 @@ static const G4int kNPhotWLbins=100;
 extern std::vector<G4double> defPhotMomVector;
 
 static const G4double kPhotonMinWL=kPhotMomWaveConv/(kPhotonMaxEnergy/CLHEP::eV)*CLHEP::nm;
-static const G4double kPhotonMaxWL=kPhotMomWaveConv/(kPhotonMinEnergy/CLHEP::RichGeV)*CLHEP::nm;
+static const G4double kPhotonMaxWL=kPhotMomWaveConv/(kPhotonMinEnergy/CLHEP::eV)*CLHEP::nm;
 
 static const G4double kReferenceWavelength=400*CLHEP::nm;
 static const G4double kReferencePhotMom=kPhotMomWaveConv/(kReferenceWavelength/CLHEP::nm)*CLHEP::eV;
@@ -107,7 +107,7 @@ enum {
 	kLHCbModel    = 2
 };
 
-extern G4double (*AerogelRefIndex)(G4double, G4double, G4bool getRef=false);
+extern G4double (*AerogelRefIndex)(G4double, G4double, G4bool);
 
 // Function declarations
 extern std::vector<G4double> InitializePhotonMomentumVector();

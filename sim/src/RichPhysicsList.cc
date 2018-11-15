@@ -15,8 +15,28 @@
 #include "G4ProcessManager.hh"
 #include "G4ProcessVector.hh"
 #include "G4UnitsTable.hh"
+
+#include "G4Decay.hh"
+#include "G4ComptonScattering.hh"
+#include "G4GammaConversion.hh"
+#include "G4PhotoElectricEffect.hh"
+#include "G4MultipleScattering.hh"
+#include "G4EmProcessOptions.hh"
+#include "G4eIonisation.hh"
+#include "G4eBremsstrahlung.hh"
+#include "G4eplusAnnihilation.hh"
+#include "G4MuIonisation.hh"
+#include "G4MuBremsstrahlung.hh"
+#include "G4MuPairProduction.hh"
+#include "G4hIonisation.hh"
+#include "G4OpAbsorption.hh"
+#include "G4OpRayleigh.hh"
+#include "G4OpBoundaryProcess.hh"
+
 #include "G4SystemOfUnits.hh"
 
+#include "RichCerenkov.hh"
+#include "RichStepCut.hh"
 #include "RichPhysicsList.hh"
 
 
@@ -109,8 +129,6 @@ void RichPhysicsList::ConstructProcess()
 	constructed = true;
 }
 
-#include "G4Decay.hh"
-
 void RichPhysicsList::ConstructGeneral()
 {
 	G4Decay *theDecayProcess = new G4Decay();
@@ -126,25 +144,6 @@ void RichPhysicsList::ConstructGeneral()
 	}
 #endif
 }
-
-#include "RichStepCut.hh"
-
-#include "G4ComptonScattering.hh"
-#include "G4GammaConversion.hh"
-#include "G4PhotoElectricEffect.hh"
-
-#include "G4MultipleScattering.hh"
-#include "G4EmProcessOptions.hh"
-
-#include "G4eIonisation.hh"
-#include "G4eBremsstrahlung.hh"
-#include "G4eplusAnnihilation.hh"
-
-#include "G4MuIonisation.hh"
-#include "G4MuBremsstrahlung.hh"
-#include "G4MuPairProduction.hh"
-
-#include "G4hIonisation.hh"
 
 void RichPhysicsList::ConstructEM()
 {
@@ -221,11 +220,6 @@ void RichPhysicsList::ConstructEM()
 		}
 	}
 }
-
-#include "RichCerenkov.hh"
-#include "G4OpAbsorption.hh"
-#include "G4OpRayleigh.hh"
-#include "G4OpBoundaryProcess.hh"
 
 void RichPhysicsList::ConstructOp()
 {

@@ -3,7 +3,7 @@
 
 # include "globals.hh"
 # include "G4VUserPhysicsList.hh"
-# include "G4ParticleTable
+# include "G4ParticleTable.hh"
 
 class RichPhysicsList : public G4VUserPhysicsList {
 public:
