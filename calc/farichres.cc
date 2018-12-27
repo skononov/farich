@@ -109,7 +109,6 @@ static bool read_radiator_file(string fn,vector<pair<float,float>>& data)
             cerr << fn << ": значение показателя (" << n << ") меньше 1.0 в строке " << line << endl;
             return false;
         }
-        cout << t << " " << n << endl;
         data.push_back({t,n});        
     }
 
@@ -312,7 +311,7 @@ int main(int argc, char *argv[])
         } else {
             cout << "  NT-оптимизация радиатора\n";
         }
-    } else {
+    } else if (infn.empty()) {
         cout << "  только быстрая оптимизация радиатора\n";
     }
     if (!outfn.empty())
