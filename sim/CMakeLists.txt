@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------------
 # Setup the project
-cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
 project(FARICH)
 
 #----------------------------------------------------------------------------
@@ -30,6 +30,15 @@ include(${Geant4_USE_FILE})
 include(${ROOT_USE_FILE})
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
+#----------------------------------------------------------------------------
+# Redefine compiler flags as needed for ROOT
+#
+set(CMAKE_CXX_FLAGS "-W -Wall -pedantic -Wno-non-virtual-dtor\
+ -Wno-long-long -Wwrite-strings -Wpointer-arith -Woverloaded-virtual\ 
+ -Wno-variadic-macros -Wshadow -pipe -DG4USE_STD14\
+ -static-libstdc++ -pipe -m64 -fsigned-char -fPIC -pthread\ 
+ -DR__HAVE_CONFIG -O3 -DNDEBUG -fno-trapping-math\
+ -ftree-vectorize -fno-math-errno -std=c++14")
 
 #----------------------------------------------------------------------------
 # Locate sources and headers for this project
@@ -44,12 +53,7 @@ file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.hh)
 add_executable(aRichSim aRichSim.cc ${sources} ${headers})
 target_link_libraries(aRichSim ${Geant4_LIBRARIES})
 
-add_executable(test test.cc)
-target_link_libraries(aRichSim ${Geant4_LIBRARIES})
-
 #----------------------------------------------------------------------------
 # Install the executable to 'bin' directory under CMAKE_INSTALL_PREFIX
 #
 install(TARGETS aRichSim DESTINATION bin)
-
-

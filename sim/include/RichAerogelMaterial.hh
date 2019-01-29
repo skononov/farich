@@ -36,10 +36,10 @@ public:
 	G4int Initialize(G4int verboseLevel=0);
 
 	G4double GetScatLength(G4double PhotMom=kReferencePhotMom) const
-	{ return rayleighData->GetProperty(PhotMom); }
+	{ return rayleighData->Value(PhotMom); }
 
 	G4double GetAbsLength(G4double PhotMom=kReferencePhotMom) const
-	{ return absorpData->GetProperty(PhotMom); }
+	{ return absorpData->Value(PhotMom); }
 
 	G4int GetChromaticity() const { return chromaticity; }
 

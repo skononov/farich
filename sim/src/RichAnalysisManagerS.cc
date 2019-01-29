@@ -7,6 +7,7 @@
 #include "G4Run.hh"
 #include "G4HCofThisEvent.hh"
 #include "Randomize.hh"
+#include "CLHEP/Units/SystemOfUnits.h"
 
 //ROOT headers
 #include "TROOT.h"
@@ -89,13 +90,13 @@ void RichAnalysisManagerS::finish()
 		   << "Number of events with at list one hit in this run " << runNumEvWithHit << "\n"
 	 	   << " Number of working layers: " << nwLayers << "\n"
 	 	   << " Mean number of photoelectrons: " << runNumPe << "\n"
-		   << " Cherenkov angle, mrad: " << runCkvAngle/mrad << " measured, (1st layer "
-		   << layerAngles[0]/mrad << " est)\n"
-		   << " Cherenkov ring radius, mm: " << runRingRadius/mm << "\n"
-		   << " Angular resolution, mrad: " << run1peAngleRMS/mrad << " per photon, "
-		   << runTrackAngleRMS/mrad << " per track\n"
-		   << " Radius resolution, mm: " << run1peRadiusRMS/mm << " per photon, "
-		   << runTrackRadiusRMS/mm << " per track\n"
+		   << " Cherenkov angle, mrad: " << runCkvAngle/CLHEP::mrad << " measured, (1st layer "
+		   << layerAngles[0]/CLHEP::mrad << " est)\n"
+		   << " Cherenkov ring radius, mm: " << runRingRadius/CLHEP::mm << "\n"
+		   << " Angular resolution, mrad: " << run1peAngleRMS/CLHEP::mrad << " per photon, "
+		   << runTrackAngleRMS/CLHEP::mrad << " per track\n"
+		   << " Radius resolution, mm: " << run1peRadiusRMS/CLHEP::mm << " per photon, "
+		   << runTrackRadiusRMS/CLHEP::mm << " per track\n"
 		   << " Velocity: " << runBeta << " (" << beta << "), diff=" << fabs(runBeta-beta) << "\n"
 		   << " Velocity resolution: " << run1peBetaRMS << " per photon, "
 		   << runTrackBetaRMS << " per track\n"
@@ -131,7 +132,7 @@ void RichAnalysisManagerS::LoadBetaData()
 		G4cerr << "Current number of rings does not match the number read from file" << G4endl;
 		return;
 	}
-	if (incAngle==0 && Nphi>1 || incAngle>0 && Nphi==1) {
+	if ((incAngle==0 && Nphi>1) || (incAngle>0 && Nphi==1)) {
 		G4cerr << "Particle angle does not match that read from file" << G4endl;
 		return;
 	}
@@ -181,15 +182,15 @@ void RichAnalysisManagerS::EndOfEventAnalysis(const RichHitsCollection *RHC)
 		imageCenter = meanEmissionPoint +
 			primMeanDirection*(detector->GetDetectorWindowZ()-meanEmissionPoint.z())/primMeanDirection.z();
 		if (verboseLevel>1) {
-			ancout << " Primary position\n  at input radiator surface: " << inPrimaryPosition/mm << "\n"
-				   << "  at output radiator surface: " << outPrimaryPosition/mm << "\n"
+			ancout << " Primary position\n  at input radiator surface: " << inPrimaryPosition/CLHEP::mm << "\n"
+				   << "  at output radiator surface: " << outPrimaryPosition/CLHEP::mm << "\n"
 				   << "  mean primary direction: " << primDirection << "\n"
-				   << "  at photodetector plane: " << imageCenter/mm << G4endl;
+				   << "  at photodetector plane: " << imageCenter/CLHEP::mm << G4endl;
 		}
 //	} else {
 //		G4cerr << "\nInsane primary position at radiator boundaries! "
-//			   << " Primary position at input radiator surface: " << inPrimaryPosition/mm << "\n"
-//			   << "                  at output radiator surface: " << outPrimaryPosition/mm << G4endl;
+//			   << " Primary position at input radiator surface: " << inPrimaryPosition/CLHEP::mm << "\n"
+//			   << "                  at output radiator surface: " << outPrimaryPosition/CLHEP::mm << G4endl;
 //	}
 */
 
@@ -213,11 +214,11 @@ void RichAnalysisManagerS::EndOfEventAnalysis(const RichHitsCollection *RHC)
 
 		G4ThreeVector hitPos = aHit->GetPosition();
 
-		G4double x=hitPos.x()/mm, y=hitPos.y()/mm;
+		G4double x=hitPos.x()/CLHEP::mm, y=hitPos.y()/CLHEP::mm;
 
 		hXYhits->Fill(x,y,weight);
 
-		G4double wl_nm = aHit->GetWL()/nanometer;
+		G4double wl_nm = aHit->GetWL()/CLHEP::nanometer;
 		hPeWL->Fill(wl_nm,weight);
 
 		hNpePerPixel->Fill(aHit->GetNhits());
@@ -233,7 +234,7 @@ void RichAnalysisManagerS::EndOfEventAnalysis(const RichHitsCollection *RHC)
 		G4double radius = (hitPos-imageCenter-eventVertexShift).mag();
 
         //Get Cherenkov angle in mrad and radius in mm
-		G4double thetac_mr = thetac/mrad, radius_mm=radius/mm;
+		G4double thetac_mr = thetac/CLHEP::mrad, radius_mm=radius/CLHEP::mm;
 
 		trackCkvAngle += thetac*weight;
 		trackRadius += radius*weight;
@@ -245,9 +246,9 @@ void RichAnalysisManagerS::EndOfEventAnalysis(const RichHitsCollection *RHC)
 		run1peRadiusRMS += radius*radius*weight;
 
 		hCkvAngle->Fill(thetac_mr,weight);
-		hAlphaAngle->Fill(alpha/degree,weight);
+		hAlphaAngle->Fill(alpha/CLHEP::degree,weight);
 		h1peRadius->Fill(radius_mm,weight);
-		pCkvAngVsAlpha->Fill(alpha/degree,thetac_mr,weight);
+		pCkvAngVsAlpha->Fill(alpha/CLHEP::degree,thetac_mr,weight);
 
 		hLayerCkvAngle[iLayer]->Fill(thetac_mr);
 		hLayer1peRadius[iLayer]->Fill(radius_mm);
@@ -301,25 +302,25 @@ void RichAnalysisManagerS::EndOfEventAnalysis(const RichHitsCollection *RHC)
 				hitinfo.y=y;
 				hitinfo.layer=iLayer+1;
 
-				hitinfo.x0=vertexPos.x()/mm;
-				hitinfo.y0=vertexPos.y()/mm;
-				hitinfo.z0=vertexPos.z()/mm;
+				hitinfo.x0=vertexPos.x()/CLHEP::mm;
+				hitinfo.y0=vertexPos.y()/CLHEP::mm;
+				hitinfo.z0=vertexPos.z()/CLHEP::mm;
 
-				hitinfo.theta0=dir0loc.theta()/degree;
-				hitinfo.phi0=dir0loc.phi()/degree;
+				hitinfo.theta0=dir0loc.theta()/CLHEP::degree;
+				hitinfo.phi0=dir0loc.phi()/CLHEP::degree;
 
-				hitinfo.theta=dir.theta()/degree;
-				hitinfo.phi=dir.phi()/degree;
+				hitinfo.theta=dir.theta()/CLHEP::degree;
+				hitinfo.phi=dir.phi()/CLHEP::degree;
 
 				hitinfo.wl=wl_nm;
 
 				hitinfo.radius=radius_mm;
 				hitinfo.angle=thetac_mr;
-				hitinfo.alpha=alpha/degree;
+				hitinfo.alpha=alpha/CLHEP::degree;
 				hitinfo.beta=b;
 
-				hitinfo.xe=expos.x()/mm;
-				hitinfo.ye=expos.y()/mm;
+				hitinfo.xe=expos.x()/CLHEP::mm;
+				hitinfo.ye=expos.y()/CLHEP::mm;
 
 				hitinfo.npe=aHit->GetNhits();
 
@@ -333,12 +334,12 @@ void RichAnalysisManagerS::EndOfEventAnalysis(const RichHitsCollection *RHC)
 
 				rootHit.x=x;
 				rootHit.y=y;
-        	    rootHit.z=detector->GetDetectorWindowZ()/mm;
+        	    rootHit.z=detector->GetDetectorWindowZ()/CLHEP::mm;
 				rootHit.layer=iLayer+1;
 
-				rootHit.x0=vertexPos.x()/mm;
-				rootHit.y0=vertexPos.y()/mm;
-				rootHit.z0=vertexPos.z()/mm;
+				rootHit.x0=vertexPos.x()/CLHEP::mm;
+				rootHit.y0=vertexPos.y()/CLHEP::mm;
+				rootHit.z0=vertexPos.z()/CLHEP::mm;
 
 				rootHit.vx=dir0.x();
 				rootHit.vy=dir0.y();
@@ -352,9 +353,9 @@ void RichAnalysisManagerS::EndOfEventAnalysis(const RichHitsCollection *RHC)
 				rootHit.thetac=thetac_mr/1e3;
 				rootHit.phic=alpha;
 
-				rootHit.xe=expos.x()/mm;
-				rootHit.ye=expos.y()/mm;
-				rootHit.ze=expos.z()/mm;
+				rootHit.xe=expos.x()/CLHEP::mm;
+				rootHit.ye=expos.y()/CLHEP::mm;
+				rootHit.ze=expos.z()/CLHEP::mm;
 
 				rootHit.n=aHit->GetNhits();
 
@@ -365,7 +366,7 @@ void RichAnalysisManagerS::EndOfEventAnalysis(const RichHitsCollection *RHC)
         //Print hit info
 		if (verboseLevel>2) {
 			ancout << "Hit#" << NumPhotoelectrons << "\n"
-				   << " hitPos = " << hitPos/mm << "\n"
+				   << " hitPos = " << hitPos/CLHEP::mm << "\n"
 				   << " wavelength = " << wl_nm << "nm\n"
 				   << " layer# = " << iLayer+1 << ", ring# = " << iRing+1 << "\n"
 				   << " radius = " << radius_mm << "mm\n"
@@ -409,8 +410,8 @@ void RichAnalysisManagerS::EndOfEventAnalysis(const RichHitsCollection *RHC)
 			hTrackBeta->Fill(trackBeta);
 		}
 
-		hTrackCkvAngle->Fill(trackCkvAngle/mrad);
-		hTrackRadius->Fill(trackRadius/mm);
+		hTrackCkvAngle->Fill(trackCkvAngle/CLHEP::mrad);
+		hTrackRadius->Fill(trackRadius/CLHEP::mm);
 	}
 
 	if (verboseLevel>1) {

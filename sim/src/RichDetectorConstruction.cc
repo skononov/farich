@@ -104,44 +104,44 @@ void RichDetectorConstruction::DefineMaterials()
     G4cout << *(G4Element::GetElementTable()) << G4endl;
 
 //Hydrogen
-	a=1.00795*g/mole;
+	a=1.00795*CLHEP::g/CLHEP::mole;
 	G4Element* elH = new G4Element(name="Hydrogen",symbol="H",z=1.,a);
 
 //Lithium
-	a=6.941*g/mole;
+	a=6.941*CLHEP::g/CLHEP::mole;
 	G4Element* elLi = new G4Element(name="Lithium",symbol="Li",z=3.,a);
 
 //Nitrogen
-	a=14.0067*g/mole;
+	a=14.0067*CLHEP::g/CLHEP::mole;
 	G4Element* elN = new G4Element(name="Nitrogen",symbol="N", z=7., a);
 
 //Oxygen
-	a=15.9994*g/mole;
+	a=15.9994*CLHEP::g/CLHEP::mole;
 	G4Element* elO = new G4Element(name="Oxygen",symbol="O", z=8., a);
 
 //Fluorine
-	a=18.9984*g/mole;
+	a=18.9984*CLHEP::g/CLHEP::mole;
 	G4Element* elF = new G4Element(name="Fluorine",symbol="F", z=9., a);
 
 //Sodium
-	a=22.9898*g/mole;
+	a=22.9898*CLHEP::g/CLHEP::mole;
 	G4Element* elNa = new G4Element(name="Sodium",symbol="Na", z=11., a);
 
 //Magnesium
-	a=24.305*g/mole;
+	a=24.305*CLHEP::g/CLHEP::mole;
 	G4Element* elMg = new G4Element(name="Magnesium",symbol="Mg", z=12., a);
 
 //Silicon
-	a=28.0855*g/mole;
+	a=28.0855*CLHEP::g/CLHEP::mole;
 	G4Element* elSi = new G4Element(name="Silicon",symbol="Si",z=14.,a);
 
 //Calcium
-	a=40.078*g/mole;
+	a=40.078*CLHEP::g/CLHEP::mole;
 	G4Element* elCa = new G4Element(name="Calcium",symbol="Ca",z=20.,a);
 
 //Default optical properties
 	G4double SimplePhotMomVector[2] = { kPhotonMinEnergy, kPhotonMaxEnergy };
-	G4double DefAbsorpLength[2]  = { 1.0e32*mm, 1.0e32*mm };
+	G4double DefAbsorpLength[2]  = { 1.0e32*CLHEP::mm, 1.0e32*CLHEP::mm };
 	G4double DefRefIndex[2]      = { 1.0, 1.0 };
 
 //Air at 20 degree C and 1 atm for the ambiet air.
@@ -157,7 +157,7 @@ void RichDetectorConstruction::DefineMaterials()
 
 //Water
 	G4cout << " Defining Water .." << G4endl;
-	density=1.000*g/cm3;
+	density=1.000*CLHEP::g/CLHEP::cm3;
 //	G4Material* H2O = new G4Material(name="Water",density,numel=2);
 //	H2O->AddElement(elH,natoms=2);
 //	H2O->AddElement(elO,natoms=1);
@@ -166,7 +166,7 @@ void RichDetectorConstruction::DefineMaterials()
 	G4cout << "  Reading H2O refraction index from " << kH2OrefIndDataFile << G4endl;
 	RichSpectrum riH2Osp(kH2OrefIndDataFile);
 	G4cout << "   " << riH2Osp.Size() << " entries read" << G4endl;
-	riH2Osp.ReduceToRange(kPhotonMinWL/nm,kPhotonMaxWL/nm);
+	riH2Osp.ReduceToRange(kPhotonMinWL/CLHEP::nm,kPhotonMaxWL/CLHEP::nm);
 	if (verboseLevel>0) riH2Osp.Print();
 
 	RichH2OMPT = new G4MaterialPropertiesTable;
@@ -178,7 +178,7 @@ void RichDetectorConstruction::DefineMaterials()
 
 //SiO2
 	G4cout << " Defining Fused Quartz .." << G4endl;
-	density=2.200*g/cm3;
+	density=2.200*CLHEP::g/CLHEP::cm3;
 //	G4Material* SiO2 = new G4Material(name="Quartz",density,numel=2);
 //	SiO2->AddElement(elSi,natoms=1);
 //	SiO2->AddElement(elO,natoms=2);
@@ -201,7 +201,7 @@ void RichDetectorConstruction::DefineMaterials()
 	G4cout << " Defining Aerogels .." << G4endl;
 	RichAerogelMat = new RichAerogelMaterial(aerogelNomScatLength, aerogelAbsLenDataFile,
 		chromaticity);
-/*	density=0.25*g/cm3; //exact density doesn't matter because it is ideal simulation
+/*	density=0.25*g/CLHEP::cm3; //exact density doesn't matter because it is ideal simulation
 
 	char strname[20];
 
@@ -218,7 +218,7 @@ void RichDetectorConstruction::DefineMaterials()
 
 //Lithium fluoride (LiF)
 	G4cout << " Defining Lithium Fluoride .." << G4endl;
-	density=2.632*g/cm3; //PDG 2004
+	density=2.632*CLHEP::g/CLHEP::cm3; //PDG 2004
 
 //	G4Material* LiF = new G4Material(name="LiF",density,numel=2);
 //	LiF->AddElement(elLi,natoms=1);
@@ -228,7 +228,7 @@ void RichDetectorConstruction::DefineMaterials()
 	G4cout << "  Reading LiF refraction index from " << kLiFrefIndDataFile << G4endl;
 	RichSpectrum riLiFsp(kLiFrefIndDataFile);
 	G4cout << "   " << riLiFsp.Size() << " entries read" << G4endl;
-	riLiFsp.ReduceToRange(kPhotonMinWL/nm,kPhotonMaxWL/nm);
+	riLiFsp.ReduceToRange(kPhotonMinWL/CLHEP::nm,kPhotonMaxWL/CLHEP::nm);
 	if (verboseLevel>0) riLiFsp.Print();
 
 	RichLiFMPT = new G4MaterialPropertiesTable;
@@ -240,7 +240,7 @@ void RichDetectorConstruction::DefineMaterials()
 
 //Sodium fluoride (NaF)
 	G4cout << " Defining Sodium Fluoride .." << G4endl;
-	density=2.558*g/cm3; //PDG 2004
+	density=2.558*CLHEP::g/CLHEP::cm3; //PDG 2004
 
 	G4Material* NaF = new G4Material(name="NaF",density,numel=2);
 	NaF->AddElement(elNa,natoms=1);
@@ -249,7 +249,7 @@ void RichDetectorConstruction::DefineMaterials()
 	G4cout << "  Reading NaF refraction index from " << kNaFrefIndDataFile << G4endl;
 	RichSpectrum riNaFsp(kNaFrefIndDataFile);
 	G4cout << "   " << riNaFsp.Size() << " entries read" << G4endl;
-	riNaFsp.ReduceToRange(kPhotonMinWL/nm,kPhotonMaxWL/nm);
+	riNaFsp.ReduceToRange(kPhotonMinWL/CLHEP::nm,kPhotonMaxWL/CLHEP::nm);
 	if (verboseLevel>0) riNaFsp.Print();
 
 	RichNaFMPT = new G4MaterialPropertiesTable;
@@ -267,7 +267,7 @@ void RichDetectorConstruction::DefineMaterials()
 	G4cout << "  Reading CaF2 refraction index from " << kCaF2refIndDataFile << G4endl;
 	RichSpectrum riCaF2sp(kCaF2refIndDataFile);
 	G4cout << "   " << riCaF2sp.Size() << " entries read" << G4endl;
-	riCaF2sp.ReduceToRange(kPhotonMinWL/nm,kPhotonMaxWL/nm);
+	riCaF2sp.ReduceToRange(kPhotonMinWL/CLHEP::nm,kPhotonMaxWL/CLHEP::nm);
 	if (verboseLevel>0) riCaF2sp.Print();
 
 	RichCaF2MPT = new G4MaterialPropertiesTable;
@@ -284,7 +284,7 @@ void RichDetectorConstruction::DefineMaterials()
 	G4cout << "  Reading Plexiglas refraction index from " << kPMMArefIndDataFile << G4endl;
 	RichSpectrum riPMMAsp(kPMMArefIndDataFile);
 	G4cout << "   " << riPMMAsp.Size() << " entries read" << G4endl;
-	riPMMAsp.ReduceToRange(kPhotonMinWL/nm,kPhotonMaxWL/nm);
+	riPMMAsp.ReduceToRange(kPhotonMinWL/CLHEP::nm,kPhotonMaxWL/CLHEP::nm);
 	if (verboseLevel>0) riPMMAsp.Print();
 
 	RichPMMAMPT = new G4MaterialPropertiesTable;
@@ -474,7 +474,7 @@ G4LogicalVolume* RichDetectorConstruction::ConstructRadiator()
         proximityDistance=overallDimension-totalThickness;
 
 	if (verboseLevel)
-		G4cout << "  Set proximity distance to " << proximityDistance/mm << " mm" << G4endl;
+		G4cout << "  Set proximity distance to " << proximityDistance/CLHEP::mm << " mm" << G4endl;
 
 	mlrDesc->SetProximityDistance(proximityDistance);
 	G4int N=0;
@@ -524,7 +524,7 @@ G4LogicalVolume* RichDetectorConstruction::ConstructRadiator()
 		N = mlrDesc->MakeFixed(nLayers,overallDimension,riPC);
 		if (N < nLayers) {
 			G4cerr << "Failed to make " << nLayers << " layers in radiator of"
-				   << " total thickness " << totalThickness/mm << " mm" << G4endl;
+				   << " total thickness " << totalThickness/CLHEP::mm << " mm" << G4endl;
 			mlrDesc->clear();
 			return 0;
 		}
@@ -586,11 +586,11 @@ G4LogicalVolume* RichDetectorConstruction::ConstructRadiator()
 				   << setw(10) << mlrDesc->GetMaterialName(i);
 		if (G4String(mlrDesc->GetMaterialName(i)).contains("Aerogel"))
 				G4cout << " n_nom=" << setprecision(4) << setw(6) << mlrDesc->GetIndex(i) << ",";
-			G4cout << " t=" << setprecision(2) << mlrDesc->GetThickness(i)/mm << " mm"
+			G4cout << " t=" << setprecision(2) << mlrDesc->GetThickness(i)/CLHEP::mm << " mm"
 				   << G4endl;
 		}
 		G4cout.unsetf(ios::fixed|ios::left);
-		G4cout << "  Total thickness of radiator: " << radiatorThickness/mm << " mm" << G4endl;
+		G4cout << "  Total thickness of radiator: " << radiatorThickness/CLHEP::mm << " mm" << G4endl;
 		G4cout.precision(0);
 		G4cout.width(0);
 	}
@@ -632,7 +632,7 @@ G4LogicalVolume* RichDetectorConstruction::ConstructRadiator()
 			z -= 2*halfPitch;
 			continue;
 		} else {
-			halfT -= 0.005*mm; //make a small air gap between layers of materials
+			halfT -= 0.005*CLHEP::mm; //make a small air gap between layers of materials
 			aMaterial = G4Material::GetMaterial(matName);
 			if( !aMaterial ) {
 				G4cerr << "Undefined material " << matName << " met. Make a gap." << G4endl;
@@ -651,7 +651,7 @@ G4LogicalVolume* RichDetectorConstruction::ConstructRadiator()
 				continue;
 			}
             //fill in refractive index for this layer in MLRadiatorDescription
-			mlrDesc->SetIndex(i,riV->GetProperty(meanPhotonMomentum));
+			mlrDesc->SetIndex(i,riV->Value(meanPhotonMomentum));
 		}
 
 		RichUsedMaterials[i]=aMaterial;
@@ -693,41 +693,41 @@ void RichDetectorConstruction::AddLayer(G4String layerSpec,G4double thickness)
 		}
 		if ( number==1.0 ) {
 			mlrDesc->AddAlayer("Air",thickness);
-			G4cout << "Gap added with size of " << thickness/mm << " mm" <<G4endl;
+			G4cout << "Gap added with size of " << thickness/CLHEP::mm << " mm" <<G4endl;
 		} else {
 			mlrDesc->AddAlayer(number,thickness);
 			G4cout << "Aerogel layer added with nominal index of refraction of " << number
-				   << " and thickness of " << thickness/mm << " mm" <<G4endl;
+				   << " and thickness of " << thickness/CLHEP::mm << " mm" <<G4endl;
 		}
 	} else { // string
 		if ( layerSpec.compareTo("lif",G4String::ignoreCase)==0 ) {
 			mlrDesc->AddAlayer("LiF",thickness);
 			G4cout << "LiF layer added of thickness "
-				   << thickness/mm << " mm" <<G4endl;
+				   << thickness/CLHEP::mm << " mm" <<G4endl;
 		} else if ( layerSpec.compareTo("naf",G4String::ignoreCase)==0 ) {
 			mlrDesc->AddAlayer("NaF",thickness);
 			G4cout << "NaF layer added of thickness "
-				   << thickness/mm << " mm" <<G4endl;
+				   << thickness/CLHEP::mm << " mm" <<G4endl;
 		} else if ( layerSpec.compareTo("caf2",G4String::ignoreCase)==0 ) {
 			mlrDesc->AddAlayer("G4_CALCIUM_FLUORIDE",thickness);
 			G4cout << "CaF2 layer added of thickness "
-				   << thickness/mm << " mm" <<G4endl;
+				   << thickness/CLHEP::mm << " mm" <<G4endl;
 		} else if ( layerSpec.compareTo("pmma",G4String::ignoreCase)==0 ) {
 			mlrDesc->AddAlayer("G4_PLEXIGLASS",thickness);
 			G4cout << "G4_PLEXIGLASS layer added of thickness "
-				   << thickness/mm << " mm" <<G4endl;
+				   << thickness/CLHEP::mm << " mm" <<G4endl;
 		} else if ( layerSpec.compareTo("quartz",G4String::ignoreCase)==0 ) {
 			mlrDesc->AddAlayer("Quartz",thickness);
 			G4cout << "Quartz layer added of thickness "
-				   << thickness/mm << " mm" <<G4endl;
+				   << thickness/CLHEP::mm << " mm" <<G4endl;
 		} else if ( layerSpec.compareTo("water",G4String::ignoreCase)==0 ) {
 			mlrDesc->AddAlayer("Water",thickness);
 			G4cout << "Water layer added of thickness "
-                                   << thickness/mm << " mm" <<G4endl;
+                                   << thickness/CLHEP::mm << " mm" <<G4endl;
 		} else if ( layerSpec.compareTo("air",G4String::ignoreCase)==0 ||
 			        layerSpec.compareTo("none",G4String::ignoreCase)==0 ) {
 			mlrDesc->AddAlayer("Air",thickness);
-			G4cout << "Gap added with size of " << thickness/mm << " mm" <<G4endl;
+			G4cout << "Gap added with size of " << thickness/CLHEP::mm << " mm" <<G4endl;
 		} else {
 			G4cerr << "Unknown material name " << layerSpec << " ignored" << G4endl;
 			return;
@@ -754,7 +754,7 @@ void RichDetectorConstruction::DefineOpPhCathProperties()
 	if (pmtQEsp.IsEmpty()) {
     	if (verboseLevel)
 			G4cout << "   Set quantum efficiency to 1.0" << G4endl;
-		pmtQEsp.Set(kPhotonMinWL/nm,kPhotonMaxWL/nm,1.0);
+		pmtQEsp.Set(kPhotonMinWL/CLHEP::nm,kPhotonMaxWL/CLHEP::nm,1.0);
 	} else {
 		if (verboseLevel) {
 			G4cout << "   " << pmtQEsp.Size() << " entries read" << G4endl;
@@ -787,7 +787,7 @@ void RichDetectorConstruction::DefineOpPhCathProperties()
 	while( (pp=next()) ) {
 		prevPhotMom=PhotMom;
 		PhotMom = kPhotMomWaveConv/pp->first*eV;
-		G4double qri = pcRefIndVector->GetProperty(PhotMom);
+		G4double qri = pcRefIndVector->Value(PhotMom);
 		G4double eff = detectionEfficieny*(pp->second/100.)*(qri+1)*(qri+1)/4/qri;
 		//G4cout<<PhotMom/eV<<"\t"<<eff<<G4endl;
 		pcEffVector->AddElement(PhotMom,eff);
@@ -839,7 +839,7 @@ void RichDetectorConstruction::SwitchChromaticity()
 		if (chromaticity==kNoDispersion) {
 			G4MaterialPropertiesTable* tmp_mpt = new G4MaterialPropertiesTable;
 			G4MaterialPropertyVector* riVector = new G4MaterialPropertyVector;
-			G4double ri = def_mpt->GetProperty("RINDEX")->GetProperty(meanPhotonMomentum);
+			G4double ri = def_mpt->GetProperty("RINDEX")->Value(meanPhotonMomentum);
 			riVector->AddElement(kPhotonMinEnergy,ri);
 			riVector->AddElement(kPhotonMaxEnergy,ri);
 			tmp_mpt->AddProperty("RINDEX",riVector);
@@ -937,7 +937,7 @@ void RichDetectorConstruction::Print() const
 		   << "|             Detector parameters             |\n"
 		   << "-----------------------------------------------\n"
 		   << "Aerogel:\n"
-		   << "  Scattering length: " << aerogelNomScatLength/mm << " mm\n"
+		   << "  Scattering length: " << aerogelNomScatLength/CLHEP::mm << " mm\n"
 		   << "  Absorption data file: " << fnAbs << "\n"
 		   << "Radiator:\n"
            << "  Constructed in " << ModeName(mlrMode) << " mode\n"
@@ -954,33 +954,33 @@ void RichDetectorConstruction::Print() const
 			G4cout << setw(10) << "Gap";
 		else {
 			G4cout << setw(10) << aMaterial->GetName()
-				   << " rho=" << setprecision(4) << aMaterial->GetDensity()/g*cm3 << " g/cm^3,";
+				   << " rho=" << setprecision(4) << aMaterial->GetDensity()/CLHEP::g*CLHEP::cm3 << " g/cm^3,";
 			G4double riRef=1.0;
 			G4MaterialPropertiesTable* mpt=aMaterial->GetMaterialPropertiesTable();
 			if (mpt) {
 				G4MaterialPropertyVector* riV=mpt->GetProperty("RINDEX");
                 if (riV)
-					riRef=riV->GetProperty(kReferencePhotMom);
+					riRef=riV->Value(kReferencePhotMom);
 			}
 			G4cout << " n(400nm)=" << setprecision(4) << riRef << ",";
 		}
-		G4cout << " t=" << setprecision(2) << mlrDesc->GetThickness(i)/mm << "mm" << G4endl;
+		G4cout << " t=" << setprecision(2) << mlrDesc->GetThickness(i)/CLHEP::mm << "mm" << G4endl;
 	}
 	G4cout.unsetf(ios::fixed|ios::left);
 	G4cout.width(0);
 
-	G4cout << "  Total thickness: " << setprecision(4) << radiatorThickness/mm << " mm\n"
+	G4cout << "  Total thickness: " << setprecision(4) << radiatorThickness/CLHEP::mm << " mm\n"
 	       << "Beta to optimize radiator: " << setprecision(6) << betaOptimized << "\n"
-		   << "Proximity distance: " << setprecision(4) << proximityDistance/mm << " mm\n"
+		   << "Proximity distance: " << setprecision(4) << proximityDistance/CLHEP::mm << " mm\n"
 		   << "Photodetector:\n"
 		   << "  QE data file: " << fnQE << "\n"
-		   << "  detection efficiency: " << detectionEfficieny/perCent << "%\n"
-		   << "  geometrical efficiency: " << geomEfficiency/perCent << "%\n";
+		   << "  detection efficiency: " << detectionEfficieny/CLHEP::perCent << "%\n"
+		   << "  geometrical efficiency: " << geomEfficiency/CLHEP::perCent << "%\n";
 	if( pixelSize>0.0 )
-		G4cout << "  pixel size: " << pixelSize/mm << "mm\n";
+		G4cout << "  pixel size: " << pixelSize/CLHEP::mm << "mm\n";
 	else
 		G4cout << "  absolute position resolution\n";
-	G4cout << "  mean photon wavelength: " << kPhotMomWaveConv/(meanPhotonMomentum/eV) << " nm"
+	G4cout << "  mean photon wavelength: " << kPhotMomWaveConv/(meanPhotonMomentum/CLHEP::eV) << " nm"
 		   << G4endl;
 	G4cout.precision(0);
 
@@ -992,7 +992,7 @@ void RichDetectorConstruction::Print() const
 G4double RichDetectorConstruction::GetNpeRoughly(G4double beta,G4double incAngle)
 {
 	const G4double PhotMomBin = defPhotMomVector[1]-defPhotMomVector[0];
-	const G4double CherenkovSpectrumConst=fine_structure_const/hbarc;
+	const G4double CherenkovSpectrumConst=CLHEP::fine_structure_const/CLHEP::hbarc;
 
 	G4MaterialPropertyVector* qeData =
 		RichOpPhCathSurfacePT->GetProperty("EFFICIENCY");
@@ -1016,11 +1016,11 @@ G4double RichDetectorConstruction::GetNpeRoughly(G4double beta,G4double incAngle
 
 	for (size_t ibin=0; ibin<defPhotMomVector.size()-1; ibin++) {
 		G4double PhotMom = defPhotMomVector[ibin];
-        G4double eff = geomEfficiency*qeData->GetProperty(PhotMom);
+        G4double eff = geomEfficiency*qeData->Value(PhotMom);
 
 		G4double spectralDensity=0;
 		for (G4int i=0; i<nLayers; i++) {
-			ri[i]=riV[i]->GetProperty(PhotMom);
+			ri[i]=riV[i]->Value(PhotMom);
 
 			G4double cosT = 1/beta/ri[i];
 
@@ -1028,8 +1028,8 @@ G4double RichDetectorConstruction::GetNpeRoughly(G4double beta,G4double incAngle
 
 			if (ri[i]*sin(acos(cosT)-incAngle)>=1.0) continue; //total internal reflection
 
-			G4double labs=absLengthV[i]?absLengthV[i]->GetProperty(PhotMom):1E+32*mm;
-			G4double lsc=scatLengthV[i]?scatLengthV[i]->GetProperty(PhotMom):1E+32*mm;
+			G4double labs=absLengthV[i]?absLengthV[i]->Value(PhotMom):1E+32*CLHEP::mm;
+			G4double lsc=scatLengthV[i]?scatLengthV[i]->Value(PhotMom):1E+32*CLHEP::mm;
 
 			att[i]=1/labs+1/lsc;
 

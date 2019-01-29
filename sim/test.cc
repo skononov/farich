@@ -1,13 +1,11 @@
 #include <iostream>
 #include <fstream>
-#include "G4MaterialPropertyVector.hh"
+#include "TString.h"
 
 int main(int argc, char *argv[])
 {
-    if (argc<2) return 1;
-    
-    G4MaterialPropertyVector data(argv[1]);
-    std::cout << data << std::endl;
+    TString s("abc");
+    std::cout << s << std::endl;
     
     return 0;
 }

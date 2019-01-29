@@ -7,14 +7,14 @@
 #include "TSpline.h"
 #include "TGraphCorr.h"
 
-template class vector<TGraphCorr*>;
-template class vector<TSpline3*>;
+template class std::vector<TGraphCorr*>;
+template class std::vector<TSpline3*>;
 
 Int_t Nr=0, Nphi=0;
 Double_t dPhi=2*TMath::Pi();
 
-vector<TGraphCorr*> vgBeta, vgSigBeta, vgRingBound;
-vector<TSpline3*> vsBeta;
+std::vector<TGraphCorr*> vgBeta, vgSigBeta, vgRingBound;
+std::vector<TSpline3*> vsBeta;
 
 TDatime modDatime(2010,4,30,13,0,0);
 Bool_t newCal=kTRUE;
@@ -53,7 +53,6 @@ Int_t loadcal(const char* calfn)
 	calfile->cd();
 
 	TGraph *aGraph=0;
-	TGraphCorr *cGraph=0;
 
 	const char *bfmt, *sbfmt, *boundfmt;
 
@@ -108,8 +107,7 @@ Int_t loadcal(const char* calfn)
 			sprintf(name,bfmt,ir+1,iphi);
 			aGraph = loadgraph(name);
 			if (!aGraph) break;
-			cGraph = new TGraphCorr(*aGraph);
-			vgBeta.push_back(cGraph);
+			vgBeta.push_back(new TGraphCorr(*aGraph));
 			vsBeta.push_back(new TSpline3("",aGraph));
 
 			if (Nr==1 && Nphi==1) break;
@@ -117,16 +115,14 @@ Int_t loadcal(const char* calfn)
 			sprintf(name,sbfmt,ir+1,iphi);
 			aGraph = loadgraph(name);
 			if (!aGraph) break;
-			cGraph = new TGraphCorr(*aGraph);
-			vgSigBeta.push_back(cGraph);
+			vgSigBeta.push_back(new TGraphCorr(*aGraph));
 
 			if (Nr==1 || ir>Nr-2) continue;
 
 			sprintf(name,boundfmt,ir+1,iphi);
 			aGraph = loadgraph(name);
 			if (!aGraph) break;
-			cGraph = new TGraphCorr(*aGraph);
-			vgRingBound.push_back(cGraph);
+			vgRingBound.push_back(new TGraphCorr(*aGraph));
 		}
 		if (!aGraph) break;
 	}
