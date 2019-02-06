@@ -28,11 +28,14 @@ int Spectrum::ReadFile(const char *datafile)
             break;
         pair<data_iterator, bool> result = data.insert(point_type(x, val));
         if (!result.second) {
-            cerr << datafile << ": entry (" << x << "," << val << ") duplicates point (" << result.first->first << ","
+            cerr << datafile << ": Entry (" << x << "," << val << ") duplicates point (" << result.first->first << ","
                  << result.first->second << ")";
         }
     }
     ifile.close();
+    
+    if (data.size()==0)
+        cerr << datafile << ": No valid entries read" << endl;
 
     return data.size();
 }

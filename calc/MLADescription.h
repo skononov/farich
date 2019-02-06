@@ -26,7 +26,7 @@ class MLADescription {
     static const int Nlmax = 100; ///< Maximum number of layers
 
     /** Optimization option numbers */
-    enum Optimization_t { NOT_OPTIMIZED = 0, NT_OPTIMIZATION = 1, POL_OPTIMIZATION = 2 };
+    enum Optimization_t { NOT_OPTIMIZED = 0, FAST_OPTIMIZATION = 1, NT_OPTIMIZATION = 2, POL_OPTIMIZATION = 3 };
     /** Detailed calculation tuple */
     struct CalcTuple {
         int layer;
@@ -62,8 +62,9 @@ class MLADescription {
     double beta;             ///< particle velocity that we need to optimize for
     double wavelength;       ///< wavelength at which we need to optimize for, nm
     double scatteringLength; ///< light scattering length at 400 nm, mm
-    Spectrum pdEff;          ///< Photon detection efficiency spectrum, percent
-    double pixelSize;        ///< Photon detector pixel size, mm
+    Spectrum absLength;      ///< aerogel absorption length spectrum, mm
+    Spectrum pdEff;          ///< photon detection efficiency spectrum, percent
+    double pixelSize;        ///< photon detector pixel size, mm
     int optimization;        ///< last optimization type, possible values are defined in enum
 
     // Auxilliary data structures
@@ -190,8 +191,14 @@ class MLADescription {
         scatteringLength = l;
         optimization = 0;
     }
+    /**Set aerogel absorption length spectrum*/
+    void SetAbsLength(const Spectrum &abslen)
+    {
+        absLength = abslen;
+        optimization = 0;
+    }
     /**Set photon detection efficiency spectrum*/
-    void SetPDefficiency(Spectrum &eff)
+    void SetPDefficiency(const Spectrum &eff)
     {
         pdEff = eff;
         optimization = 0;
@@ -219,6 +226,8 @@ class MLADescription {
     double GetScatteringLength() const { return scatteringLength; }
     /**Get minimum layer thickness*/
     double GetMinimumThickness() const { return *std::min_element(vt.begin(), vt.end()); }
+    /**Get aerogel absorption length spectrum*/
+    const Spectrum &GetAbsLength() const { return absLength; }
     /**Get photon detection efficiency spectrum*/
     const Spectrum &GetPDefficiency() const { return pdEff; }
     /**Get photon detector pixel size*/

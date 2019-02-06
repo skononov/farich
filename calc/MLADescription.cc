@@ -508,12 +508,14 @@ MLADescription::Resolution &MLADescription::Calculate(double b, bool storeData)
                 double att = 1.0;
                 if (scatteringLength > 0)
                     att = exp(-path / lsc[iwl]);
+                if (!absLength.IsEmpty())
+                    att *= exp(-path / absLength(wl[iwl]));
 
                 double dSwl = (1 - 1 / rn2[iwl][l]) * att * (x1 - x0);
                 if (storeData)
                     result.data[l * Nwl * Nr + iwl * Nr + i] = {
                         l, (float)Rc, (float)wl[iwl], (float)(X0 + 0.5 * (x0 + x1)),
-                        (float)(K * 0.01 * pdEff.Evaluate(wl[iwl]) * dSwl * wlstep / wl[iwl] / wl[iwl])};
+                        (float)(K * 0.01 * pdEff(wl[iwl]) * dSwl * wlstep / wl[iwl] / wl[iwl])};
 
                 Swl += dSwl;
             } // loop on layers

@@ -20,7 +20,7 @@
 
 using namespace std;
 
-static const char *optstring = "qn:s:N:D:T:p:b:B:e:o:O:i:m::";
+static const char *optstring = "qn:s:N:D:T:p:b:B:e:o:O:i:m::a:";
 static const char *progname;
 
 //Параметры программы
@@ -39,6 +39,7 @@ static bool minimize = false;
 static bool polpar = false;
 static int npol = 2;
 static bool samethick = false;
+static string absfn;
 static string infn;
 static string outfn = "farichres.root";
 static string macfn;
@@ -51,7 +52,7 @@ static void write_geant4_macfile(string macfn, MLADescription &mla)
         macfile << "/Rich/pmt/qeDataFile " << qefn << "\n"
                 << "/Rich/pmt/detection " << efficiency << "\n"
                 << "/Rich/radiator/scatterLength " << Lsc << " mm\n"
-                << "/Rich/radiator/absDataFile none\n"
+                << "/Rich/radiator/absDataFile" << (absfn.empty()?"none":absfn) << "\n"
                 << "/Rich/mode manual\n"
                 << "/Rich/proximity " << mla.GetProximityDistance() << " mm\n";
         for (int l = 0; l < nlayers; l++) {
@@ -130,20 +131,22 @@ static void Usage(int status)
         << "   -p size           Размер квадратного пикселя фотонного детектора, мм (по умолчанию: " << pixelsize << ")\n"
         << "   -D distance       Расстояние от начала радиатора до фотонного детектора, мм (по умолчанию: " << D << ")\n"
         << "   -n ri1            Максимальный показатель преломления радиатора на 400 нм (по умолчанию: " << ri1 << ")\n"
-        << "   -i filename       Прочитать описание радиатора из текстового файла filename с колонками:\n"
+        << "   -i filename       Задать описание радиатора из текстового файла с колонками:\n"
            "                       толщина слоя (мм), показатель преломления на 400 нм,\n"
            "                       начиная с первого слоя (по умолчанию: оптимизированный радиатор)\n"
         << "   -N nlayers        Число слоев аэрогеля, 0<nlayers<=100 (по умолчанию: " << nlayers << ")\n"
         << "   -T thickness      Толщина радиатора, мм (по умолчанию: " << T << ")\n"
+        << "   -a filename       Задать спектр длины поглощения в аэрогеле из файла с колонками:\n"
+           "                       длина волны (нм), длина поглощения (мм) (по умолчанию: нет поглощения)\n"
         << "   -s Lsc            Длина рассеяния на 400 нм, мм (по умолчанию: " << Lsc << ")\n"
         << "   -b beta           Оптимизировать радиатор для данной скорости частицы, 1/ri1<beta<=1 (по умолчанию: " << opbeta << ")\n"
         << "   -B beta           Сделать расчет для данной скорости частицы, 1/ri1<beta<=1 (по умолчанию:\n"
            "                       скорость частицы для оптимизации)\n"
         << "   -m[param]         Оптимизировать радиатор по угловой ошибке на трек, используя параметризацию param:\n"
            "                       nt, pol<k>[s] (k=1..10, s - одинаковая толщина слоев) (по умолчанию: nt)\n"
-        << "   -o filename       Сохранить гистограмму распределения по радиусу в заданный ROOT-файл filename\n"
+        << "   -o filename       Сохранить гистограмму распределения по радиусу в заданный ROOT-файл\n"
            "                       (по умолчанию: " << outfn << ")\n"
-        << "   -O filename       Сохранить описание детектора в командный файл Geant4 filename.\n"
+        << "   -O filename       Сохранить описание детектора в заданный командный файл Geant4.\n"
            "                       (по умолчанию: не cохранять).\n"
         << endl;
     exit(status);
@@ -185,6 +188,12 @@ int main(int argc, char *argv[])
                 return 1;
             }
             Lsc = l;
+        } else if (opt == 'a') {
+            absfn = optarg;
+            if (gSystem->AccessPathName(absfn.c_str())) { // файл не обнаружен
+                cerr << absfn << ": нет такого файла" << endl;
+                return 1;
+            }
         } else if (opt == 'N') {
             int n = atoi(optarg);
             if (n < 1) {
@@ -298,6 +307,7 @@ int main(int argc, char *argv[])
         cout << "  файл описания радиатора:                      " << infn << "\n";
     }
     cout << "  длина рассеяния в аэрогеле на 400 нм:         " << Lsc << " мм\n"
+         << "  файл со спектром длины поглощения аэрогеле:   " << (absfn.empty()?"не задан":absfn) << "\n"
          << "  оптимизация для скорости:                     " << opbeta << "\n"
          << "  расчет для скорости:                          " << beta << "\n";
 
@@ -323,8 +333,8 @@ int main(int argc, char *argv[])
     TRint *app = 0;
     if (!batch) {
         int ac = 2;
-        char *av[2] = {"rint", "-l"};
-        app = new TRint("rint", &ac, av);
+        const char * const av[2] = {"rint", "-l"};
+        app = new TRint("rint", &ac, const_cast<char**>(av));
     }
 
     Spectrum phdeteff(qefn.c_str());
@@ -342,11 +352,24 @@ int main(int argc, char *argv[])
          << " значений." << endl;
     cout.precision(6);
 
+    Spectrum absLen;
+    if (!absfn.empty()) {
+        absLen.ReadFile(absfn.c_str());
+        if (absLen.IsEmpty()) return 1;
+        double awl1, awl2;
+        absLen.GetRange(awl1,awl2);
+        if (wl1 < awl1) { // add zero absorption length below the lowest wavelength
+            absLen.AddEntry(awl1-10,0.);
+            absLen.AddEntry(wl1,0.);
+        }
+    }
+
     double t0 = D-T; // proximity distance. may be not correct at this stage
     MLADescription mla(t0, opbeta);
     mla.SetScatteringLength(Lsc);
     mla.SetPDefficiency(phdeteff);
     mla.SetPixelSize(pixelsize);
+    mla.SetAbsLength(absLen);
 
     if (!infn.empty()) {
         vector<pair<float,float>> radiator;

@@ -52,6 +52,8 @@ class Spectrum {
 
     double Evaluate(double x) const;
 
+    double operator()(double x) const { return Evaluate(x); }
+
     void GetRange(double &x1, double &x2) const
     {
         const_data_iterator first = data.begin(), last = data.end();
