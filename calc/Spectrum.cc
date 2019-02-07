@@ -1,19 +1,19 @@
 #include "Spectrum.h"
 
 #include <cmath>
+#include <cstring>
 #include <iostream>
+#include <sstream>
 #include <fstream>
 #include <iomanip>
 
 using std::cerr;
 using std::cout;
 using std::endl;
-using std::ifstream;
-using std::pair;
 
 int Spectrum::ReadFile(const char *datafile)
 {
-    ifstream ifile(datafile);
+    std::ifstream ifile(datafile);
     if (!ifile.is_open()) {
         cerr << datafile << ": No such file" << endl;
         return -1;
@@ -21,15 +21,43 @@ int Spectrum::ReadFile(const char *datafile)
 
     data.clear();
 
+    //cout << datafile  << " content:" << endl;
+    std::istringstream ss;
+    int line = 0;
+    char buf[1000];
     double x, val;
     while (1) {
-        ifile >> x >> val;
-        if (ifile.fail() || ifile.eof())
+        ifile.getline(buf,1000);
+        if (ifile.eof())
             break;
-        pair<data_iterator, bool> result = data.insert(point_type(x, val));
+        line++;
+        bool skip = false;
+        for (char c : buf) {
+            if (c == ' ' || c == '\t' || c == '\r') 
+                continue;
+            else if (c == '#') { 
+                skip = true; //skip as comment
+                break; 
+            } else if (c == '\0'){
+                skip = true; //skip as empty string
+                break; 
+            } else
+                break; //try to read numbers
+        }
+        if (skip) continue;
+        
+        ss.clear();
+        ss.str(buf);
+        //cout << ss.str() << endl;
+        ss >> x >> val;
+        if (ss.fail()) {
+            cerr << datafile << ":" << line << ": unexpected content: " << buf << "\n";
+        }
+        
+        auto result = data.insert(point_type(x, val));
         if (!result.second) {
             cerr << datafile << ": Entry (" << x << "," << val << ") duplicates point (" << result.first->first << ","
-                 << result.first->second << ")";
+                 << result.first->second << ")\n";
         }
     }
     ifile.close();
@@ -65,7 +93,7 @@ void Spectrum::ReduceToRange(double x1, double x2, double defval)
         else
             data[x1] = defval;
     } else { // loc1==0: x1 inside data range
-        pair<data_iterator, bool> res = data.insert(point_type(x1, Evaluate(x1)));
+        auto res = data.insert(point_type(x1, Evaluate(x1)));
         data.erase(data.begin(), res.first); // shrink data below x1
     }
 
@@ -75,7 +103,7 @@ void Spectrum::ReduceToRange(double x1, double x2, double defval)
         else
             data[x2] = defval;
     } else { // loc2==0: x2 inside data range
-        pair<data_iterator, bool> res = data.insert(point_type(x2, Evaluate(x2)));
+        auto res = data.insert(point_type(x2, Evaluate(x2)));
         data.erase(++res.first, data.end()); // shrink data above x2
     }
 }
@@ -85,9 +113,8 @@ void Spectrum::Scale(double c)
     if (data.empty())
         return;
 
-    data_iterator first = data.begin(), last = data.end();
-    for (; first != last; first++)
-        first->second *= c;
+    for (auto& point: data)
+        point.second *= c;
 }
 
 double Spectrum::Evaluate(double x) const
