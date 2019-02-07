@@ -337,6 +337,7 @@ int main(int argc, char *argv[])
         app = new TRint("rint", &ac, const_cast<char**>(av));
     }
 
+    //Чтение файла с данными квантовой эффективности
     Spectrum phdeteff(qefn.c_str());
     if (phdeteff.IsEmpty())
         return 1;
@@ -352,15 +353,21 @@ int main(int argc, char *argv[])
          << " значений." << endl;
     cout.precision(6);
 
+    //Чтение файла с данными длины поглощения света в аэрогеле
     Spectrum absLen;
     if (!absfn.empty()) {
         absLen.ReadFile(absfn.c_str());
         if (absLen.IsEmpty()) return 1;
         double awl1, awl2;
         absLen.GetRange(awl1,awl2);
+        cout.precision(3);
+        cout << "Длина поглощения света в аэрогеле определена от " << awl1 << " до " << awl2 << " нм, всего " << absLen.Size()
+             << " значений." << endl;
+        cout.precision(6);
         if (wl1 < awl1) { // add zero absorption length below the lowest wavelength
             absLen.AddEntry(awl1-10,0.);
             absLen.AddEntry(wl1,0.);
+            cout << "Длина поглощения света продолжена в УФ до " << wl1 << " нм нулевыми значениями " << endl;
         }
     }
 
