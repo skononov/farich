@@ -372,21 +372,23 @@ double MLADescription::GetMaxSensitivityWL(double T) const
 {
     double wl1, wl2;
     double wlmax = 400, smax = 0;
+    double wl, rn, Latt, attFactor, s;
 
     pdEff.GetRange(wl1, wl2);
     double wlstep = (wl2 - wl1) / Nwl;
 
     for (int i = 0; i < Nwl; i++) {
-        double wl = wl1 + (i + 0.5) * wlstep;
-        double rn = AerogelRefIndex(1.05, 400., wl) * beta;
+        wl = wl1 + (i + 0.5) * wlstep;
+        rn = AerogelRefIndex(1.05, 400., wl) * beta;
         if (rn <= 1.0)
             continue;
-        double attFactor = 1.;
+        attFactor = 1.;
         if (T > 0.) {
-            double Latt = scatteringLength * pow(wl / 400., 4);
-            attFactor = Latt * (1 - exp(-T * rn / Latt));
+            Latt = scatteringLength * pow(wl / 400., 4);
+            if (!absLength.IsEmpty()) Latt = 1 / (1/absLength(wl) + 1/Latt);
+            attFactor = Latt * (1 - exp(- T * rn / Latt));
         }
-        double s = (1 - 1 / (rn * rn)) * attFactor * pdEff.Evaluate(wl) / rn;
+        s = (1 - 1 / (rn * rn)) * attFactor * pdEff.Evaluate(wl) / rn;
         if (smax < s) {
             smax = s;
             wlmax = wl;
