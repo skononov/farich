@@ -131,9 +131,10 @@ class MLADescription {
 
     /**Calculate radius resolution, number of photoelectrons, etc.
      *  @param b particle velocity for which perform calculation, by default use the optimal velocity @c beta
-     *  @param storeData store detailed data from calculation
+     *  @param storeData store detailed data from calculation, do not by default
+     *  @param fresnelOn turn on Fresnel reflection losses, do not by default
      */
-    Resolution &Calculate(double b = 0., bool storeData = false);
+    Resolution &Calculate(double b = 0., bool storeData = false, bool fresnelOn = false);
 
     /**Optimize focusing radiator for given number of layers, fixed total radiator thickness and refractive index of the
      * first layer

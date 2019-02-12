@@ -398,12 +398,14 @@ double MLADescription::GetMaxSensitivityWL(double T) const
     return wlmax;
 }
 
-MLADescription::Resolution &MLADescription::Calculate(double b, bool storeData)
+MLADescription::Resolution &MLADescription::Calculate(double b, bool storeData, bool fresnelOn)
 {
     static const double eulergamma = 0.5772156649;
     // normalizing coefficient of Cerenkov emission intensity assuming wavelength in nm and path in mm
     static const double K = 2 * M_PI / 137.036 / 1e-6;
-    static double rn2[Nwl][Nlmax], tanc[Nwl][Nlmax];
+    static double rn2[Nwl][Nlmax], tanp[Nwl][Nlmax][Nlmax], cosp[Nwl][Nlmax][Nlmax], tana[Nwl][Nlmax];
+    static double wl[Nwl];
+    static double lsc[Nwl];
 
     result.valid = false;
 
@@ -461,17 +463,24 @@ MLADescription::Resolution &MLADescription::Calculate(double b, bool storeData)
 
     // Preparing calculation to save CPU time
     double wlstep = (wl2 - wl1) / Nwl;
-    double wl[Nwl];
-    double lsc[Nwl];
 
 #pragma omp parallel for
     for (int iwl = 0; iwl < Nwl; iwl++) {
         wl[iwl] = wl1 + (iwl + 0.5) * wlstep;
         lsc[iwl] = scatteringLength * pow(wl[iwl] / 400., 4);
         for (int l = 0; l < nlayers; l++) {
-            double rn = b * AerogelRefIndex(vn[l], 400., wl[iwl]);
-            rn2[iwl][l] = rn * rn;
-            tanc[iwl][l] = sqrt(rn * rn - 1);
+            double rn = b * AerogelRefIndex(vn[l], 400., wl[iwl]), rnsq = rn * rn;
+            rn2[iwl][l] = rnsq;
+            if (rnsq <= 1.0) { // underthreshold velocity
+                tanp[iwl][l][l] = 0;
+                tana[iwl][l] = 0;
+                continue;
+            }
+            tana[iwl][l] = sqrt((rnsq - 1) / (b2 - rnsq + 1));
+            for (int pl = 0; pl <= l; pl++) {
+                tanp[iwl][l][pl] = sqrt((rnsq - 1) / (rn2[iwl][pl] - rnsq + 1));
+                cosp[iwl][l][pl] = sqrt(1 - (rnsq - 1) / rn2[iwl][pl]);
+            }
         }
     }
 
@@ -488,15 +497,22 @@ MLADescription::Resolution &MLADescription::Calculate(double b, bool storeData)
                     result.data[l * Nwl * Nr + iwl * Nr + i] = {l, (float)Rc, (float)wl[iwl], 0., 0.};
                 if (rn2[iwl][l] <= 1.0) // underthreshold velocity
                     continue;
-                double dR = t0 * sqrt((rn2[iwl][l] - 1) / (b2 - rn2[iwl][l] + 1)); // shift of the ring in air
+                double dR = t0 * tana[iwl][l]; // shift of the ring in air
                 double path = 0; // path of light in the forward layers
+                double att = 1.0;
+                if (fresnelOn) 
+                    att *= 1. - pow((tanp[iwl][l][0]-tana[iwl][l]) / (tanp[iwl][l][0]+tana[iwl][l]) * 
+                                    (1-tanp[iwl][l][0]*tana[iwl][l]) / (1+tanp[iwl][l][0]*tana[iwl][l]),2);
                 for (int pl = 0; pl < l; pl++) {
-                    dR += vt[pl] * sqrt((rn2[iwl][l] - 1) / (rn2[iwl][pl] - rn2[iwl][l] + 1));
-                    path += vt[pl] / sqrt(1 - (rn2[iwl][l] - 1) / rn2[iwl][pl]);
+                    dR += vt[pl] * tanp[iwl][l][pl];
+                    path += vt[pl] / cosp[iwl][l][pl];
+                    if (fresnelOn)
+                        att *= 1. - pow((tanp[iwl][l][pl]-tanp[iwl][l][pl+1]) / (tanp[iwl][l][pl]+tanp[iwl][l][pl+1]) *
+                                        (1-tanp[iwl][l][pl]*tanp[iwl][l][pl+1]) / (1+tanp[iwl][l][pl]*tanp[iwl][l][pl+1]),2);
                 }
 
-                double x0 = (R - dR) / tanc[iwl][l];   // position of photon emission for the first radius point
-                double x1 = x0 + Rstep / tanc[iwl][l]; // position of photon emission for the second radius point
+                double x0 = (R - dR) / tanp[iwl][l][l];   // position of photon emission for the first radius point
+                double x1 = x0 + Rstep / tanp[iwl][l][l]; // position of photon emission for the second radius point
 
                 if (x0 < 0. && x1 < 0. ||
                     x0 > vt[l] && x1 > vt[l]) // no contribution into the current point from this layer
@@ -505,11 +521,10 @@ MLADescription::Resolution &MLADescription::Calculate(double b, bool storeData)
                 x0 = x0 < 0. ? 0. : x0;
                 x1 = x1 > vt[l] ? vt[l] : x1;
 
-                path += 0.5 * (x0 + x1) * sqrt(rn2[iwl][l]);
+                path += 0.5 * (x0 + x1) / cosp[iwl][l][l];
 
-                double att = 1.0;
                 if (scatteringLength > 0)
-                    att = exp(-path / lsc[iwl]);
+                    att *= exp(-path / lsc[iwl]);
                 if (!absLength.IsEmpty())
                     att *= exp(-path / absLength(wl[iwl]));
 

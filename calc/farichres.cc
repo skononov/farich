@@ -406,7 +406,7 @@ int main(int argc, char *argv[])
 
     mla.Print("  ");
 
-    struct MLADescription::Resolution res = mla.Calculate(beta, true);
+    struct MLADescription::Resolution res = mla.Calculate(beta, true, true);
     cout.precision(4);
     cout << "  Скорость частицы для расчета:                 " << res.beta << "\n"
          << "  Среднее число фотоэлектронов:                 " << res.npe << "\n"
@@ -430,7 +430,7 @@ int main(int argc, char *argv[])
             cout << "Оптимизированный аэрогелевый радиатор" << endl;
             mla.Print("  ");
 
-            struct MLADescription::Resolution res1 = mla.Calculate(beta, true);
+            struct MLADescription::Resolution res1 = mla.Calculate(beta, true, true);
             cout.precision(4);
             cout << "  Скорость частицы для расчета:                 " << res1.beta << "\n"
                  << "  Среднее число фотоэлектронов:                 " << res1.npe << " [" << setprecision(2) << PERC(npe) << "%]\n"
