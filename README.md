@@ -9,13 +9,16 @@ farich/calc
 Внешние пакеты: gcc, libstdc++, libc, libomp, ROOT, gsl, LaTeX2e (для сборки описания)
 
 Чтобы собрать программу выполните
+    
     cd calc
     make
 
 Вывод справочного сообщения об использовании программы:
+    
     ./farichres
 
 Создание memo_farich2018.pdf с описанием расчета:
+    
     cd calc/memo
     pdflatex memo_farich2018.tex
 
