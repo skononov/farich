@@ -1,9 +1,10 @@
+SOURCEDIR := $(dir $(lastword ${MAKEFILE_LIST}))
 
 EXEC := farichres
 
 all: $(EXEC)
 
-CXXFLAGS += -I. $(shell root-config --cflags) $(shell gsl-config --cflags) -fPIC -O3 -fopenmp #-g
+CXXFLAGS += -I${SOURCEDIR} $(shell root-config --cflags) $(shell gsl-config --cflags) -fPIC 
 LD_FLAGS += -Wl,-rpath=$(shell root-config --libdir) -Wl,-rpath-link=$(shell root-config --libdir)
 LIBS := $(shell root-config --libs) $(shell gsl-config --libs) -lgomp
 LD := $(CXX)
@@ -12,10 +13,16 @@ SOURCES := MLADescription.cc Spectrum.cc farichres.cc
 OBJECTS := $(SOURCES:.cc=.o)
 DEPS := $(SOURCES:.cc=.cc.d)
 
-%.o: %.cc
+ifdef DEBUG
+  CXXFLAGS += -g
+else
+  CXXFLAGS += -O3 -fopenmp
+endif
+
+%.o: ${SOURCEDIR}%.cc
 	$(CXX) -c $(CXXFLAGS) $< -o $@
 
-%.cc.d: %.cc
+%.cc.d: ${SOURCEDIR}%.cc
 	@echo "Generating dependencies for $<"    
 	@$(CC) -MM $(CXXFLAGS) $< -MF $@
 
