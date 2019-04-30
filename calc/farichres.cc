@@ -68,7 +68,7 @@ static void write_geant4_macfile(string macfn, MLADescription &mla)
 static bool parse_param(string p)
 {
     transform(p.begin(), p.end(), p.begin(), [](unsigned char c) { return tolower(c); });
-    cout << "Option for minimization: " << p << endl;
+
     if (p.find_first_of("pol") == 0) {
         try {
             npol = stoi(p.substr(3));
