@@ -2,6 +2,8 @@
 *.eps
 *.png
 *.root
+*.log
+*.pdf
 *~
 *.d
 *.o
@@ -11,4 +13,5 @@
 *.anjuta
 *.db
 farichres
-
+last.kumacold
+last.kumac
