@@ -20,7 +20,7 @@
 
 using namespace std;
 
-static const char *optstring = "qn:s:N:D:T:p:b:B:e:o:O:i:m::a:";
+static const char *optstring = "qn:s:N:D:T:p:b:B:e:o:O:i:m::a:C";
 static const char *progname;
 
 //Параметры программы
@@ -39,6 +39,7 @@ static bool minimize = false;
 static bool polpar = false;
 static int npol = 2;
 static bool samethick = false;
+static bool chromaticity = true;
 static string absfn;
 static string infn;
 static string outfn = "farichres.root";
@@ -144,6 +145,7 @@ static void Usage(int status)
            "                       скорость частицы для оптимизации)\n"
         << "   -m[param]         Оптимизировать радиатор по угловой ошибке на трек, используя параметризацию param:\n"
            "                       nt, pol<k>[s] (k=1..10, s - одинаковая толщина слоев) (по умолчанию: nt)\n"
+        << "   -C                Отключить дисперсию показателя преломления от длины волны (по умолчанию - включена)\n"
         << "   -o filename       Сохранить гистограмму распределения по радиусу в заданный ROOT-файл\n"
            "                       (по умолчанию: " << outfn << ")\n"
         << "   -O filename       Сохранить описание детектора в заданный командный файл Geant4.\n"
@@ -253,6 +255,8 @@ int main(int argc, char *argv[])
             minimize = true;
         } else if (opt == 'o') {
             outfn = optarg;
+        } else if (opt == 'C') {
+            chromaticity = false;
         } else if (opt == 'O') {
             macfn = optarg;
         } else {
@@ -308,6 +312,7 @@ int main(int argc, char *argv[])
     }
     cout << "  длина рассеяния в аэрогеле на 400 нм:         " << Lsc << " мм\n"
          << "  файл со спектром длины поглощения аэрогеле:   " << (absfn.empty()?"не задан":absfn) << "\n"
+         << "  дисперсия показателя преломления аэрогеля:    " << (chromaticity?"включена":"отключена") << "\n"
          << "  оптимизация для скорости:                     " << opbeta << "\n"
          << "  расчет для скорости:                          " << beta << "\n";
 
@@ -377,6 +382,7 @@ int main(int argc, char *argv[])
     mla.SetPDefficiency(phdeteff);
     mla.SetPixelSize(pixelsize);
     mla.SetAbsLength(absLen);
+    mla.SetChromaticity(chromaticity);
 
     if (!infn.empty()) {
         vector<pair<float,float>> radiator;

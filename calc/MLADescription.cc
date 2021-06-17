@@ -50,15 +50,15 @@ void MLADescription::Resolution::resize(int nl)
 }
 
 MLADescription::MLADescription(double d, double b, double wl)
-    : nlayers(0), t0(d), beta(b), wavelength(wl), scatteringLength(0), pixelSize(0.), optimization(0), result(),
+    : nlayers(0), t0(d), beta(b), wavelength(wl), scatteringLength(0), pixelSize(0.), optimization(0), chromaticity(true), result(),
       nPolCoef(0)
 {
 }
 
 MLADescription::MLADescription(const MLADescription &mla)
     : nlayers(mla.nlayers), t0(mla.t0), beta(mla.beta), wavelength(mla.wavelength),
-      scatteringLength(mla.scatteringLength), pixelSize(mla.pixelSize), optimization(mla.optimization), vn(mla.vn),
-      vt(mla.vt), result(mla.result), nPolCoef(mla.nPolCoef), polCoef(mla.polCoef)
+      scatteringLength(mla.scatteringLength), pixelSize(mla.pixelSize), optimization(mla.optimization), 
+      chromaticity(mla.chromaticity), vn(mla.vn), vt(mla.vt), result(mla.result), nPolCoef(mla.nPolCoef), polCoef(mla.polCoef)
 {
 }
 
@@ -132,16 +132,20 @@ double MLADescription::AerogelRefIndex(double n, double wl1, double wl2)
 }
 */
 
-double MLADescription::AerogelRefIndex(double n, double wl1, double wl2)
+double MLADescription::AerogelRefIndex(double n, double wl1, double wl2) const
 {
     // Parameters of the one-pole Sellmeier formula fit to Novosibirsk aerogel n=1.03 data.
     // T. Bellunato et al., "Refractive index dispersion law of silica aerogel",
     // Eur. Phys. J. C 52 (2007) 759-764
-    const double LHCb_a0 = 0.05639, LHCb_wl0sqr = 83.22 * 83.22;
-    double LHCb_RI2m1ref = LHCb_a0 / (1 - LHCb_wl0sqr / (wl1 * wl1)); //(n**2-1) of LHCb aerogel at wl1
-    double ri2m1_lhcb = LHCb_a0 / (1 - LHCb_wl0sqr / (wl2 * wl2));    //(n**2-1) of LHCb aerogel at wl2
+    static const double LHCb_a0 = 0.05639, LHCb_wl0sqr = 83.22 * 83.22;
 
-    return sqrt(1 + (n * n - 1) / LHCb_RI2m1ref * ri2m1_lhcb);
+    if (chromaticity) {
+        double LHCb_RI2m1ref = LHCb_a0 / (1 - LHCb_wl0sqr / (wl1 * wl1)); //(n**2-1) of LHCb aerogel at wl1
+        double ri2m1_lhcb = LHCb_a0 / (1 - LHCb_wl0sqr / (wl2 * wl2));    //(n**2-1) of LHCb aerogel at wl2
+        return sqrt(1 + (n * n - 1) / LHCb_RI2m1ref * ri2m1_lhcb);
+    } else {
+        return n;
+    }
 }
 
 void MLADescription::AddAlayer(double ri, double t)

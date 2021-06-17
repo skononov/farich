@@ -66,6 +66,7 @@ class MLADescription {
     Spectrum pdEff;          ///< photon detection efficiency spectrum, percent
     double pixelSize;        ///< photon detector pixel size, mm
     int optimization;        ///< last optimization type, possible values are defined in enum
+    bool chromaticity;       ///< if refractive index dispersion is on
 
     // Auxilliary data structures
     std::vector<double> vn; ///< indices of refraction at 400 nm
@@ -210,6 +211,11 @@ class MLADescription {
         pixelSize = ps;
         optimization = 0;
     }
+    /**Set chromaticity*/
+    void SetChromaticity(bool ch)
+    {
+        chromaticity = ch;
+    }
 
     /**Get number of layers*/
     double GetNlayers() const { return nlayers; }
@@ -233,6 +239,8 @@ class MLADescription {
     const Spectrum &GetPDefficiency() const { return pdEff; }
     /**Get photon detector pixel size*/
     double GetPixelSize() const { return pixelSize; }
+    /**Get chromaticity*/
+    bool GetChromaticity() const { return chromaticity; }
     /**Get last optimization type*/
     int GetOptimizationType() const { return optimization; }
     /**Get last result of resolution calculation*/
@@ -257,7 +265,7 @@ class MLADescription {
     /**Recalculate refractive index of aerogel given at @c wl1 as @c n to @c wl2
      * Scaled from fused quartz index considering
      * (n^2-1) proportional to density*/
-    static double AerogelRefIndex(double n, double wl1, double wl2);
+    double AerogelRefIndex(double n, double wl1, double wl2) const;
 
  private:
     /**Formula of tangent of the Cherenkov angle produced in the layer @c k
