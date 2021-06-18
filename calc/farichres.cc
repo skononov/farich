@@ -293,7 +293,10 @@ int main(int argc, char *argv[])
         cerr << qefn << ": нет такого файла" << endl;
         return 1;
     }
-    
+
+    for(int iarg=0; iarg<argc; iarg++)
+        cout << argv[iarg] << " ";
+    cout << endl;
 
     //==========Расчет========//
     cout << "________________________________________________\n"
