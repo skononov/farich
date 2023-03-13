@@ -18,7 +18,15 @@
 
 #include "MLADescription.h"
 
-using namespace std;
+using std::endl;
+using std::cout;
+using std::cerr;
+using std::setprecision;
+using std::ifstream;
+using std::ofstream;
+using std::pair;
+using std::vector;
+using std::string;
 
 static const char *optstring = "qn:s:N:D:T:p:b:B:e:o:O:i:m::a:C";
 static const char *progname;
